@@ -6,6 +6,12 @@ CnCNet QM Discord Bot, in python
 - Create file named `.env` in `/cncnet-ladder-bot/` (root) directory
 - Add discord application id `DISCORD_CLIENT_SECRET=[token]`
 ---
+#### Pip Installs:
+```commandline
+pip install discord.py
+pip install apiclient
+pip install -U python-dotenv
+```
 #### Bot Commands
 - `!maps {ladder}` return the current QM maps of a given ladder
 ---
