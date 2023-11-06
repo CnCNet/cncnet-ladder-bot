@@ -3,7 +3,7 @@ CnCNet QM Discord Bot, in python
 
 ---
 #### Developer notes:
-- Create file named `.env` in `/cncnet-qm-bot/` directory
+- Create file named `.env` in `/cncnet-ladder-bot/` (root) directory
 - Add discord application id `DISCORD_CLIENT_SECRET=[token]`
 ---
 #### Bot Commands
