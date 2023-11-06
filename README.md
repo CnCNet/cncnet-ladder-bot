@@ -3,8 +3,9 @@ CnCNet QM Discord Bot, in python
 
 ---
 #### Developer notes:
-- Create file named `.env` in `/cncnet-ladder-bot/` (root) directory
+- Create file named `.env` in `src` directory
 - Add discord application id `DISCORD_CLIENT_SECRET=[token]`
+- Run `docker-compose build` and `docker-compose up`
 ---
 #### Pip Installs:
 ```commandline
