@@ -1,0 +1,10 @@
+version: '3'
+services:
+    cncnet-ladder-bot:
+        build:
+            context: ./docker
+            dockerfile: Dockerfile
+        container_name: cncnet-ladder-bot
+        volumes:
+            - ./src:/app
+        restart: always

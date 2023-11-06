@@ -1,3 +1,4 @@
 .env
 .idea/
 **/testing.py
+src/__pycache__/*
