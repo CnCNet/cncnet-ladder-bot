@@ -15,10 +15,10 @@ pip install -U python-dotenv
 #### Bot Commands
 - `!maps {ladder}` return the current QM maps of a given ladder
 ---
-#### Bot Schedules
+#### Bot Scheduled Commands
 - 60 second interval: Send current QM player information to `qm-bot` channel
 - Every 8 hours: Update discord users QM role according to their current QM rank
-
+---
 debug commands:
-`ps -e | grep 'python3'`
-`nohup python3 -u bot.py &`
+- find running python executions `ps -e | grep 'python3'`
+- execute bot.py `nohup python3 -u bot.py &`
