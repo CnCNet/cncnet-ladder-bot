@@ -1,6 +1,10 @@
 from apiclient import APIClient
 from apiclient.exceptions import APIRequestError
 
+from src.MyLogger import MyLogger
+
+logger = MyLogger("CnCNetApiSvc.txt")
+
 
 class CnCNetApiSvc(APIClient):
     host = "https://ladder.cncnet.org"
@@ -41,6 +45,6 @@ class CnCNetApiSvc(APIClient):
         try:
             return self.get(url)
         except APIRequestError or Exception as e:
-            print(f"Status code: '{e.status_code}', message: '{e.message}', Info: '{e.info}', Cause: '{e.__cause__}'")
+            logger.error(f"Status code: '{e.status_code}', message: '{e.message}', Info: '{e.info}', Cause: '{e.__cause__}'")
             return None
 

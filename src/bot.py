@@ -112,10 +112,10 @@ async def update_qm_bot_channel_name():
             ladder_abbrev_arr = ["ra"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
         elif server.id == 252268956033875970:  # YR discord
-            ladder_abbrev_arr = ["ra2", "ra2-new-maps", "yr", "blitz", "ra2-cl"]
+            ladder_abbrev_arr = ["ra2", "yr", "blitz", "ra2-cl"]
             qm_bot_channel = bot.get_channel(YR_DISCORD_QM_BOT_ID)
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
-            ladder_abbrev_arr = ["blitz", "ra2", "yr", "ra2-new-maps", "ra2-cl"]
+            ladder_abbrev_arr = ["blitz", "ra2", "yr", "ra2-cl"]
             qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
 
         if not ladder_abbrev_arr:
@@ -176,10 +176,10 @@ async def fetch_active_qms():
             ladder_abbrev_arr = ["ra"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
         elif server.id == 252268956033875970:  # YR discord
-            ladder_abbrev_arr = ["ra2-cl", "ra2-new-maps", "ra2", "yr", "blitz"]
+            ladder_abbrev_arr = ["ra2-cl", "ra2", "yr", "blitz"]
             qm_bot_channel = bot.get_channel(YR_DISCORD_QM_BOT_ID)
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
-            ladder_abbrev_arr = ["blitz", "ra2-new-maps", "ra2-cl", "ra2", "yr"]
+            ladder_abbrev_arr = ["blitz", "ra2-cl", "ra2", "yr"]
             qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
 
         if not qm_bot_channel:
@@ -292,7 +292,7 @@ async def fetch_recent_washed_games():
     for server in guilds:
         if server.id == YR_DISCORD_ID:  # YR discord
             channel = bot.get_channel(YR_BOT_CHANNEL_LOGS_ID)  # YR cncnet-bot-logs
-            arr = ["ra2", "ra2-new-maps", "yr", "ra2-cl"]
+            arr = ["ra2", "yr", "ra2-cl"]
         elif server.id == BLITZ_DISCORD_ID:  # Blitz discord
             arr = ["blitz"]
             channel = bot.get_channel(BLITZ_DISCORD_WASH_TIME_ID)  # Blitz wash-time
@@ -319,7 +319,7 @@ async def fetch_errored_games():
     for server in guilds:
         if server.id == YR_DISCORD_ID:  # YR discord
             channel = bot.get_channel(YR_BOT_CHANNEL_LOGS_ID)  # YR cncnet-bot-logs
-            arr = ["ra2", "ra2-new-maps", "yr", "ra2-cl"]
+            arr = ["ra2", "yr", "ra2-cl"]
         elif server.id == BLITZ_DISCORD_ID:  # Blitz discord
             arr = ["blitz"]
             channel = bot.get_channel(BLITZ_DISCORD_WASH_TIME_ID)  # Blitz wash-time
