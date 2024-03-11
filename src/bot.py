@@ -109,7 +109,7 @@ async def update_qm_bot_channel_name():
         ladder_abbrev_arr = None
         qm_bot_channel = None
         if server.id == 188156159620939776:  # CnCNet discord
-            ladder_abbrev_arr = ["ra"]
+            ladder_abbrev_arr = ["ra", "ra2", "ra2-cl", "yr", "blitz"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
         elif server.id == 252268956033875970:  # YR discord
             ladder_abbrev_arr = ["ra2", "yr", "blitz", "ra2-cl"]
