@@ -55,7 +55,7 @@ async def on_ready():
 
     await purge_bot_channel()  # Delete messages in bot-channel
     fetch_active_qms.start()
-    fetch_recent_washed_games.start()
+    # fetch_recent_washed_games.start()
     update_qm_bot_channel_name.start()
     update_qm_roles.start()
 
@@ -314,6 +314,7 @@ async def fetch_recent_washed_games():
 
 @tasks.loop(hours=8)
 async def fetch_errored_games():
+    return
     guilds = bot.guilds
 
     for server in guilds:
