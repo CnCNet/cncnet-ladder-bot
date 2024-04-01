@@ -1,7 +1,7 @@
 from apiclient import APIClient
 from apiclient.exceptions import APIRequestError
 
-from src.MyLogger import MyLogger
+from MyLogger import MyLogger
 
 logger = MyLogger("CnCNetApiSvc.txt")
 

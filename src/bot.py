@@ -59,7 +59,7 @@ async def on_ready():
     fetch_active_qms.start()
     # fetch_recent_washed_games.start()
     update_qm_bot_channel_name.start()
-    # update_qm_roles.start()
+    update_qm_roles.start()
 
     # await fetch_active_qms() # uncomment for debugging
 
@@ -178,7 +178,7 @@ async def fetch_active_qms():
         ladder_abbrev_arr = []
         qm_bot_channel = None
         if server.id == 188156159620939776:  # CnCNet discord
-            ladder_abbrev_arr = ["ra"]
+            ladder_abbrev_arr = ["ra", "ra2", "ra2-cl", "yr", "blitz"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
         elif server.id == YR_DISCORD_ID:  # YR discord
             ladder_abbrev_arr = ["ra2-cl", "ra2", "yr", "blitz"]
