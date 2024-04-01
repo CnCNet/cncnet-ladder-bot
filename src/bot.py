@@ -20,16 +20,18 @@ global cnc_api_client
 global ladders
 
 QM_BOT_CHANNEL_NAME = "ladder-bot"
-YR_DISCORD_QM_BOT_ID = 1039026321826787338  # Yuri's Revenge.qm-bot
 
 # Discord server IDs
 BLITZ_DISCORD_ID = 818265922615377971
 YR_DISCORD_ID = 252268956033875970  # Yuri's Revenge - Server ID
+GIBI_DISCORD_ID = 1007684612291579904  # Gibi server ID (polye's discord)
 
 # Discord Channel IDs
+YR_DISCORD_QM_BOT_ID = 1039026321826787338  # Yuri's Revenge.ladder-bot
 CNCNET_DISCORD_QM_BOT_ID = 1039608594057924609  # CnCNet.qm-bot
-
+GIBI_BOT_CHANNEL_ID = 1224207197173715064  # GIBI ladder-bot channel id
 BLITZ_DISCORD_QM_BOT_ID = 1040396984164548729  # RA2 World Series.qm-bot
+
 BLITZ_DISCORD_WASH_TIME_ID = 1059638045109932042  # RA2 World Series.wash-time
 YR_BOT_CHANNEL_LOGS_ID = 1075605794084638840  # Yuri's Revenge.cncnet-bot-logs
 
@@ -57,7 +59,7 @@ async def on_ready():
     fetch_active_qms.start()
     # fetch_recent_washed_games.start()
     update_qm_bot_channel_name.start()
-    update_qm_roles.start()
+    # update_qm_roles.start()
 
     # await fetch_active_qms() # uncomment for debugging
 
@@ -109,14 +111,17 @@ async def update_qm_bot_channel_name():
         ladder_abbrev_arr = None
         qm_bot_channel = None
         if server.id == 188156159620939776:  # CnCNet discord
-            ladder_abbrev_arr = ["ra"]
+            ladder_abbrev_arr = ["ra", "ra2", "yr", "blitz", "ra2-cl"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
-        elif server.id == 252268956033875970:  # YR discord
+        elif server.id == YR_DISCORD_ID:  # YR discord
             ladder_abbrev_arr = ["ra2", "yr", "blitz", "ra2-cl"]
             qm_bot_channel = bot.get_channel(YR_DISCORD_QM_BOT_ID)
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
             ladder_abbrev_arr = ["blitz", "ra2", "yr", "ra2-cl"]
             qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
+        elif server.id == GIBI_DISCORD_ID:  # GIBI discord
+            ladder_abbrev_arr = ["blitz", "ra2", "yr", "ra2-cl"]
+            qm_bot_channel = bot.get_channel(GIBI_BOT_CHANNEL_ID)
 
         if not ladder_abbrev_arr:
             continue
@@ -175,12 +180,15 @@ async def fetch_active_qms():
         if server.id == 188156159620939776:  # CnCNet discord
             ladder_abbrev_arr = ["ra"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
-        elif server.id == 252268956033875970:  # YR discord
+        elif server.id == YR_DISCORD_ID:  # YR discord
             ladder_abbrev_arr = ["ra2-cl", "ra2", "yr", "blitz"]
             qm_bot_channel = bot.get_channel(YR_DISCORD_QM_BOT_ID)
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
             ladder_abbrev_arr = ["blitz", "ra2-cl", "ra2", "yr"]
             qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
+        elif server.id == GIBI_DISCORD_ID:  # GIBI discord
+            ladder_abbrev_arr = ["blitz", "ra2", "yr", "ra2-cl"]
+            qm_bot_channel = bot.get_channel(GIBI_BOT_CHANNEL_ID)
 
         if not qm_bot_channel:
             continue
@@ -265,7 +273,7 @@ async def purge_bot_channel():
 
     for server in guilds:
         for channel in server.channels:
-            if channel.name.startswith(QM_BOT_CHANNEL_NAME):
+            if QM_BOT_CHANNEL_NAME in channel.name:
                 deleted = await channel.purge()
                 print(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
 
