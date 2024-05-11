@@ -56,9 +56,9 @@ async def on_ready():
     print(f"Ladders found: ({ladders_string})")
 
     await purge_bot_channel()  # Delete messages in bot-channel
-    fetch_active_qms.start()
+    await fetch_active_qms.start()
     # fetch_recent_washed_games.start()
-    update_qm_bot_channel_name.start()
+    await update_qm_bot_channel_name.start()
     update_qm_roles.start()
 
     # await fetch_active_qms() # uncomment for debugging
@@ -216,11 +216,12 @@ async def fetch_active_qms():
             # Get players in queue
             stats_json = cnc_api_client.fetch_stats(ladder_abbrev)
             if not stats_json:
-                server_message = f"Error fetching stats for {ladder_abbrev}."
+                server_message = f"Error fetching stats for {ladder_abbrev}. <@123726717067067393>"
                 continue
             else:
                 in_queue = stats_json['queuedPlayers']
 
+                total_in_qm = in_queue + (len(qms_arr) * 2)
                 if '-cl' in ladder_abbrev:
                     clans_in_queue = stats_json['clans']
                     total_in_qm = in_queue + (len(qms_arr) * 4)
@@ -228,9 +229,9 @@ async def fetch_active_qms():
                                       + "** Ladder:\n- " \
                                       + str(in_queue) \
                                       + " clan(s) in queue." + clans_in_queue_msg(clans_in_queue)
-
                 else:
-                    total_in_qm = in_queue + (len(qms_arr) * 2)
+                    if '2v2' in ladder_abbrev:
+                        total_in_qm = in_queue + (len(qms_arr) * 4)
                     current_message = str(total_in_qm) + " player(s) in **" + title \
                                       + "** Ladder:\n- " + str(in_queue) + " player(s) in queue"
 
