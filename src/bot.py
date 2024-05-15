@@ -21,10 +21,14 @@ global ladders
 
 QM_BOT_CHANNEL_NAME = "ladder-bot"
 
+BURG_ID = 123726717067067393
+
 # Discord server IDs
 BLITZ_DISCORD_ID = 818265922615377971
 YR_DISCORD_ID = 252268956033875970  # Yuri's Revenge - Server ID
 GIBI_DISCORD_ID = 1007684612291579904  # Gibi server ID (polye's discord)
+
+CNCNET_LADDER_DISCORD_BOT_LOGS_ID = 1240364999931854999
 
 # Discord Channel IDs
 YR_DISCORD_QM_BOT_ID = 1039026321826787338  # Yuri's Revenge.ladder-bot
@@ -216,7 +220,10 @@ async def fetch_active_qms():
             # Get players in queue
             stats_json = cnc_api_client.fetch_stats(ladder_abbrev)
             if not stats_json:
-                server_message = f"Error fetching stats for {ladder_abbrev}. <@123726717067067393>"
+                server_message = f"Error fetching stats for {ladder_abbrev}. <@{BURG_ID}>"
+                channel = bot.get_channel(CNCNET_LADDER_DISCORD_BOT_LOGS_ID)
+                await channel.send(f"{server_message}")
+                server_message = f"Failed fetching ladder stats for {ladder_abbrev}"
                 continue
             else:
                 in_queue = stats_json['queuedPlayers']
@@ -225,15 +232,15 @@ async def fetch_active_qms():
                 if '-cl' in ladder_abbrev:
                     clans_in_queue = stats_json['clans']
                     total_in_qm = in_queue + (len(qms_arr) * 4)
-                    current_message = str(total_in_qm) + " player(s) in **" + title \
+                    current_message = str(total_in_qm) + " in **" + title \
                                       + "** Ladder:\n- " \
                                       + str(in_queue) \
                                       + " clan(s) in queue." + clans_in_queue_msg(clans_in_queue)
                 else:
                     if '2v2' in ladder_abbrev:
                         total_in_qm = in_queue + (len(qms_arr) * 4)
-                    current_message = str(total_in_qm) + " player(s) in **" + title \
-                                      + "** Ladder:\n- " + str(in_queue) + " player(s) in queue"
+                    current_message = str(total_in_qm) + " in **" + title \
+                                      + "** Ladder:\n- " + str(in_queue) + " in queue"
 
                 if qms_arr:
                     current_message += "\n- " + str(len(qms_arr)) + " active matches:\n```\n- " \
@@ -455,10 +462,10 @@ async def assign_qm_role():
 
                 await member.add_roles(role)  # Add the Discord QM role
 
-            channel = bot.get_channel(YR_BOT_CHANNEL_LOGS_ID)
-            buffer = StringIO(text)
-            f = discord.File(buffer, filename=f"{ladder}_update_qm_roles_log.txt")
-            await channel.send(file=f)
+            channel = bot.get_channel(CNCNET_LADDER_DISCORD_BOT_LOGS_ID)
+            # buffer = StringIO(text)
+            # f = discord.File(buffer, filename=f"{ladder}_update_qm_roles_log.txt")
+            # await channel.send(file=f)
     print("Completed assigning QM Roles")
 
 
