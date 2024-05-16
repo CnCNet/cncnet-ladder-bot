@@ -13,7 +13,6 @@ from CnCNetApiSvc import CnCNetApiSvc
 
 from MyLogger import MyLogger
 
-logger = MyLogger("bot.txt")
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_CLIENT_SECRET')
@@ -21,6 +20,7 @@ intents = discord.Intents(messages=True, guilds=True, message_content=True, guil
 bot = commands.Bot(command_prefix='!', intents=intents)
 global cnc_api_client
 global ladders
+global logger
 
 QM_BOT_CHANNEL_NAME = "ladder-bot"
 
@@ -39,15 +39,12 @@ CNCNET_DISCORD_QM_BOT_ID = 1039608594057924609  # CnCNet.qm-bot
 GIBI_BOT_CHANNEL_ID = 1224207197173715064  # GIBI ladder-bot channel id
 BLITZ_DISCORD_QM_BOT_ID = 1040396984164548729  # RA2 World Series.qm-bot
 
-BLITZ_DISCORD_WASH_TIME_ID = 1059638045109932042  # RA2 World Series.wash-time
-YR_BOT_CHANNEL_LOGS_ID = 1075605794084638840  # Yuri's Revenge.cncnet-bot-logs
-
 
 @bot.event
 async def on_ready():
-    print("bot online")
 
     global logger
+    logger = MyLogger("bot.txt")
     logger.log("bot online")
 
     global cnc_api_client
@@ -63,19 +60,17 @@ async def on_ready():
             ladders.append(item["abbreviation"])
 
     ladders_string = ", ".join(ladders)
-    print(f"Ladders found: ({ladders_string})")
+    logger.log(f"Ladders found: ({ladders_string})")
 
     await purge_bot_channel()  # Delete messages in bot-channel
-    await fetch_active_qms.start()
-    await update_qm_bot_channel_name_task.start()
+    fetch_active_qms.start()
+    update_qm_bot_channel_name_task.start()
     update_qm_roles.start()
-
-    # await fetch_active_qms() # uncomment for debugging
 
 
 @bot.command()
 async def maps(ctx, arg=""):
-    print("Fetching maps for ladder '{arg}'")
+    logger.log("Fetching maps for ladder '{arg}'")
 
     if not ladders:
         await ctx.send("Error: No ladders available")
@@ -118,7 +113,6 @@ async def update_qm_bot_channel_name_task():
 
     global count
     global RECENT_ACTIVE_PLAYERS
-    global logger
 
     logger.log("beginning update_qm_bot_channel_name_task()")
 
@@ -127,6 +121,7 @@ async def update_qm_bot_channel_name_task():
         await send_message_to_log_channel("update_qm_bot_channel_name_task - Error: No ladders available")
         return
 
+    # fetch active stats
     stats_json = cnc_api_client.fetch_stats("all")
 
     guilds = bot.guilds
@@ -159,9 +154,9 @@ async def update_qm_bot_channel_name_task():
         for ladder_abbrev in ladder_abbrev_arr:
             stats = stats_json[ladder_abbrev]
             if not stats:
-                logger.error("Error: No stats available")
-                await send_message_to_log_channel("update_qm_bot_channel_name_task - Error: No stats available")
-                return
+                logger.error(f"Error: No stats available for ladder {ladder_abbrev}")
+                await send_message_to_log_channel(f"update_qm_bot_channel_name_task - Error: No stats available for ladder {ladder_abbrev}")
+                continue
 
             queued_players = stats['queuedPlayers']
             active_matches_players = stats['activeMatches']
@@ -187,8 +182,11 @@ async def update_qm_bot_channel_name_task():
         # update channel name every 10 mins
         if count == 10:
             await qm_bot_channel.edit(name=new_channel_name)
-            count = 0
-    count += 1
+
+    if count == 10:
+        count = 0
+    else:
+        count += 1
 
 
 # Send error message to channel on discord for bot logs
@@ -219,7 +217,7 @@ def clans_in_queue_msg(clans_in_queue):
 @tasks.loop(minutes=1)
 async def fetch_active_qms():
     if not ladders:
-        print("Error: No ladders available")
+        logger.error("Error: No ladders available")
         return
 
     current_matches_json = cnc_api_client.fetch_current_matches("all")
@@ -306,25 +304,28 @@ async def fetch_active_qms():
         if server_message:  # Send one message per server
             try:
                 await qm_bot_channel.send(server_message, delete_after=56)
-                # print(server_message)
             except HTTPException as he:
                 msg = f"Failed to send message: '{server_message}', exception '{he}'"
-                print(msg)
+                logger.error(msg)
+                await send_message_to_log_channel(msg)
                 return
             except Forbidden as f:
                 msg = f"Failed to send message due to forbidden error: '{server_message}', exception '{f}'"
-                print(msg)
+                logger.error(msg)
+                await send_message_to_log_channel(msg)
                 return
             except DiscordServerError as de:
                 msg = f"Failed to send message due to DiscordServerError:  '{server_message}', exception '{de}'"
-                print(msg)
+                logger.error(msg)
+                await send_message_to_log_channel(msg)
                 return
+    logger.log("completed fetching active matches")
 
 
 @bot.command()
 async def purge_bot_channel_command(ctx):
     if not ctx.message.author.guild_permissions.administrator:
-        print(f"{ctx.message.author} is not admin, exiting command.")
+        logger.error(f"{ctx.message.author} is not admin, exiting command.")
         return
     await purge_bot_channel()
 
@@ -336,7 +337,7 @@ async def purge_bot_channel():
         for channel in server.channels:
             if QM_BOT_CHANNEL_NAME in channel.name:
                 deleted = await channel.purge()
-                print(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
+                logger.log(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
 
 
 def is_in_bot_channel(ctx):
@@ -346,15 +347,19 @@ def is_in_bot_channel(ctx):
 @tasks.loop(hours=8)
 async def update_qm_roles():
 
-    await purge_bot_channel() # purge bot channel periodically in case a message wasn't deleted
+    logger.log("Starting update_qm_roles")
+
+    await purge_bot_channel()  # purge bot channel periodically in case a message wasn't deleted
 
     await remove_qm_roles()  # remove discord members QM roles
 
     await assign_qm_role()  # assign discord members QM roles
 
+    await send_message_to_log_channel("completed updating QM roles")
+
 
 async def remove_qm_roles():
-    print("Removing QM roles")
+    logger.log("Removing QM roles")
     guilds = bot.guilds
 
     for server in guilds:
@@ -375,11 +380,11 @@ async def remove_qm_roles():
                 elif 'ra2 qm' in role.name.lower():
                     await member.remove_roles(role)
 
-    print("Finished removing QM roles")
+    logger.log("Finished removing QM roles")
 
 
 async def assign_qm_role():
-    print("Assigning QM Roles")
+    logger.log("Assigning QM Roles")
     guilds = bot.guilds
 
     for server in guilds:
@@ -390,7 +395,7 @@ async def assign_qm_role():
         # Fetch QM player ranks
         rankings_json = cnc_api_client.fetch_rankings()
         if not rankings_json:
-            print("No ranking results found, exiting assign_qm_role().")
+            logger.log("No ranking results found, exiting assign_qm_role().")
             return
 
         ladder_abbrev_arr = ["RA2", "YR"]
@@ -460,7 +465,7 @@ async def assign_qm_role():
                 text += message + "\n"
 
                 await member.add_roles(role)  # Add the Discord QM role
-    print("Completed assigning QM Roles")
+    logger.log("Completed assigning QM Roles")
 
 
 bot.run(TOKEN)
