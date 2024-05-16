@@ -10,7 +10,10 @@ from discord.utils import get
 from dotenv import load_dotenv
 from discord.ext import commands
 from CnCNetApiSvc import CnCNetApiSvc
-from io import StringIO
+
+from MyLogger import MyLogger
+
+logger = MyLogger("bot.txt")
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_CLIENT_SECRET')
@@ -44,6 +47,9 @@ YR_BOT_CHANNEL_LOGS_ID = 1075605794084638840  # Yuri's Revenge.cncnet-bot-logs
 async def on_ready():
     print("bot online")
 
+    global logger
+    logger.log("bot online")
+
     global cnc_api_client
     cnc_api_client = CnCNetApiSvc(
         response_handler=JsonResponseHandler
@@ -61,8 +67,7 @@ async def on_ready():
 
     await purge_bot_channel()  # Delete messages in bot-channel
     await fetch_active_qms.start()
-    # fetch_recent_washed_games.start()
-    await update_qm_bot_channel_name.start()
+    await update_qm_bot_channel_name_task.start()
     update_qm_roles.start()
 
     # await fetch_active_qms() # uncomment for debugging
@@ -104,16 +109,31 @@ async def maps(ctx, arg=""):
     await ctx.send(message)
 
 
-@tasks.loop(minutes=10)
-async def update_qm_bot_channel_name():
+count = 10
+RECENT_ACTIVE_PLAYERS = []
+
+
+@tasks.loop(minutes=1)
+async def update_qm_bot_channel_name_task():
+
+    global count
+    global RECENT_ACTIVE_PLAYERS
+    global logger
+
+    logger.log("beginning update_qm_bot_channel_name_task()")
+
     if not ladders:
-        print("Error: No ladders available")
+        logger.error("Error: No ladders available")
+        await send_message_to_log_channel("update_qm_bot_channel_name_task - Error: No ladders available")
         return
+
+    stats_json = cnc_api_client.fetch_stats("all")
 
     guilds = bot.guilds
     for server in guilds:
         ladder_abbrev_arr = None
         qm_bot_channel = None
+
         if server.id == 188156159620939776:  # CnCNet discord
             ladder_abbrev_arr = ["ra", "ra2", "yr", "blitz", "blitz-2v2", "ra2-cl"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
@@ -128,25 +148,53 @@ async def update_qm_bot_channel_name():
             qm_bot_channel = bot.get_channel(GIBI_BOT_CHANNEL_ID)
 
         if not ladder_abbrev_arr:
+            logger.log(f"No ladders defined for server '{server.name}'")
             continue
 
         if not qm_bot_channel:
-            print(f"No qm-bot channel found in server '{server.name}'")
+            logger.log(f"No qm-bot channel found in server '{server.name}'")
             continue
 
         num_players = 0
-        new_channel_name = "ladder-bot"
         for ladder_abbrev in ladder_abbrev_arr:
-            stats_json = cnc_api_client.fetch_stats(ladder_abbrev)
-            if not stats_json:
+            stats = stats_json[ladder_abbrev]
+            if not stats:
+                logger.error("Error: No stats available")
+                await send_message_to_log_channel("update_qm_bot_channel_name_task - Error: No stats available")
                 return
 
-            queued_players = stats_json['queuedPlayers']
-            active_matches = stats_json['activeMatches']
-            num_players = num_players + queued_players + active_matches
-            new_channel_name = "ladder-bot-" + str(num_players)
+            queued_players = stats['queuedPlayers']
+            active_matches_players = stats['activeMatches']
 
-        await qm_bot_channel.edit(name=new_channel_name)
+            if ladder_abbrev in "2v2" or ladder_abbrev in "cl":
+                active_matches_players = active_matches_players * 4  # 4 players in a 2v2
+            else:
+                active_matches_players = active_matches_players * 2  # 2 players in a 1v1
+
+            num_players = num_players + queued_players + active_matches_players
+
+        RECENT_ACTIVE_PLAYERS.append(num_players)
+
+        if len(RECENT_ACTIVE_PLAYERS) >= 10:
+            RECENT_ACTIVE_PLAYERS.pop(0)
+
+        # from the last 10 mins, grab the most players in queue
+        max_val = max(RECENT_ACTIVE_PLAYERS)
+
+        logger.log(f"count={count}, num_players={num_players}")
+        new_channel_name = "ladder-bot-" + str(max_val)
+
+        # update channel name every 10 mins
+        if count == 10:
+            await qm_bot_channel.edit(name=new_channel_name)
+            count = 0
+    count += 1
+
+
+# Send error message to channel on discord for bot logs
+async def send_message_to_log_channel(msg):
+    channel = bot.get_channel(CNCNET_LADDER_DISCORD_BOT_LOGS_ID)
+    await channel.send(msg)
 
 
 def clans_in_queue_msg(clans_in_queue):
@@ -175,6 +223,12 @@ async def fetch_active_qms():
         return
 
     current_matches_json = cnc_api_client.fetch_current_matches("all")
+
+    stats_json = cnc_api_client.fetch_stats("all")
+    if not stats_json:
+        server_message = f"Error fetching stats for '{all}'. <@{BURG_ID}>"
+        await send_message_to_log_channel(f"{server_message}")
+        return
 
     guilds = bot.guilds
     for server in guilds:
@@ -218,19 +272,18 @@ async def fetch_active_qms():
             # continue
 
             # Get players in queue
-            stats_json = cnc_api_client.fetch_stats(ladder_abbrev)
-            if not stats_json:
+            stats = stats_json[ladder_abbrev]
+            if not stats:
                 server_message = f"Error fetching stats for {ladder_abbrev}. <@{BURG_ID}>"
-                channel = bot.get_channel(CNCNET_LADDER_DISCORD_BOT_LOGS_ID)
-                await channel.send(f"{server_message}")
+                await send_message_to_log_channel(f"{server_message}")
                 server_message = f"Failed fetching ladder stats for {ladder_abbrev}"
                 continue
             else:
-                in_queue = stats_json['queuedPlayers']
+                in_queue = stats['queuedPlayers']
 
                 total_in_qm = in_queue + (len(qms_arr) * 2)
                 if '-cl' in ladder_abbrev:
-                    clans_in_queue = stats_json['clans']
+                    clans_in_queue = stats['clans']
                     total_in_qm = in_queue + (len(qms_arr) * 4)
                     current_message = str(total_in_qm) + " in **" + title \
                                       + "** Ladder:\n- " \
@@ -298,60 +351,6 @@ async def update_qm_roles():
     await remove_qm_roles()  # remove discord members QM roles
 
     await assign_qm_role()  # assign discord members QM roles
-
-
-@tasks.loop(hours=8)
-async def fetch_recent_washed_games():
-    print("Fetching recently washed games")
-    guilds = bot.guilds
-
-    for server in guilds:
-        if server.id == YR_DISCORD_ID:  # YR discord
-            channel = bot.get_channel(YR_BOT_CHANNEL_LOGS_ID)  # YR cncnet-bot-logs
-            arr = ["ra2", "yr", "ra2-cl"]
-        elif server.id == BLITZ_DISCORD_ID:  # Blitz discord
-            arr = ["blitz"]
-            channel = bot.get_channel(BLITZ_DISCORD_WASH_TIME_ID)  # Blitz wash-time
-        else:
-            continue
-
-        hours = 8
-        for ladder_abbreviation in arr:
-            data = cnc_api_client.fetch_recently_washed_games(ladder_abbreviation, hours)
-
-            count = data["count"]
-            url = data["url"]
-
-            if count > 0:
-                await channel.send(
-                    f"{count} **{ladder_abbreviation}** games have been automatically washed in the last {hours} hours"
-                    f".\n{url}")
-
-
-@tasks.loop(hours=8)
-async def fetch_errored_games():
-    return
-    guilds = bot.guilds
-
-    for server in guilds:
-        if server.id == YR_DISCORD_ID:  # YR discord
-            channel = bot.get_channel(YR_BOT_CHANNEL_LOGS_ID)  # YR cncnet-bot-logs
-            arr = ["ra2", "yr", "ra2-cl"]
-        elif server.id == BLITZ_DISCORD_ID:  # Blitz discord
-            arr = ["blitz"]
-            channel = bot.get_channel(BLITZ_DISCORD_WASH_TIME_ID)  # Blitz wash-time
-        else:
-            continue
-
-        for ladder_abbreviation in arr:
-            data = cnc_api_client.fetch_errored_games(ladder_abbreviation)
-
-            url = data["url"]
-            count = data["count"]
-
-            if count > 0:
-                await channel.send(f"There are **{count} {ladder_abbreviation}** games that need to be washed."
-                                   f"\nOpen {url}")
 
 
 async def remove_qm_roles():
@@ -461,11 +460,6 @@ async def assign_qm_role():
                 text += message + "\n"
 
                 await member.add_roles(role)  # Add the Discord QM role
-
-            channel = bot.get_channel(CNCNET_LADDER_DISCORD_BOT_LOGS_ID)
-            # buffer = StringIO(text)
-            # f = discord.File(buffer, filename=f"{ladder}_update_qm_roles_log.txt")
-            # await channel.send(file=f)
     print("Completed assigning QM Roles")
 
 
