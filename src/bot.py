@@ -65,11 +65,16 @@ async def on_ready():
 
     await purge_bot_channel()  # Delete messages in bot-channel
     minute_task.start()
-    update_qm_roles.start()
+    # update_qm_roles.start()
 
 
-@tasks.loop(minutes=1)
+@tasks.loop(seconds=45)
 async def minute_task():
+
+    if not ladders:
+        logger.error("Error: No ladders available")
+        await send_message_to_log_channel("update_qm_bot_channel_name_task - Error: No ladders available")
+        return
 
     stats_json = cnc_api_client.fetch_stats("all")
     if is_error(stats_json):
@@ -138,11 +143,6 @@ async def update_qm_bot_channel_name_task(stats_json):
         count += 1
         return
 
-    if not ladders:
-        logger.error("Error: No ladders available")
-        await send_message_to_log_channel("update_qm_bot_channel_name_task - Error: No ladders available")
-        return
-
     guilds = bot.guilds
     for server in guilds:
         ladder_abbrev_arr = None
@@ -158,7 +158,7 @@ async def update_qm_bot_channel_name_task(stats_json):
             ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-cl"]
             qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
         elif server.id == GIBI_DISCORD_ID:  # GIBI discord
-            ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-cl"]
+            ladder_abbrev_arr = ["blitz-2v2", "blitz",  "ra2", "yr", "ra2-cl"]
             qm_bot_channel = bot.get_channel(GIBI_BOT_CHANNEL_ID)
 
         if not ladder_abbrev_arr:
@@ -236,9 +236,6 @@ def get_exception_msg(e):
 
 
 async def fetch_active_qms(stats_json):
-    if not ladders:
-        logger.error("Error: No ladders available")
-        return
 
     current_matches_json = cnc_api_client.fetch_current_matches("all")
 
@@ -246,7 +243,6 @@ async def fetch_active_qms(stats_json):
         fail_msg = f"Error fetching current_matches'. <@{BURG_ID}>\n{get_exception_msg(current_matches_json)}"
         await send_message_to_log_channel(f"{fail_msg}")
         return
-
 
     guilds = bot.guilds
     for server in guilds:
@@ -257,13 +253,13 @@ async def fetch_active_qms(stats_json):
             ladder_abbrev_arr = ["ra", "ra2", "ra2-cl", "yr", "blitz", "blitz-2v2"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
         elif server.id == YR_DISCORD_ID:  # YR discord
-            ladder_abbrev_arr = ["ra2-cl", "ra2", "yr", "blitz", "blitz-2v2"]
+            ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "ra2-cl"]
             qm_bot_channel = bot.get_channel(YR_DISCORD_QM_BOT_ID)
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
-            ladder_abbrev_arr = ["blitz", "ra2-cl", "ra2", "yr", "blitz-2v2"]
+            ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr"]
             qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
         elif server.id == GIBI_DISCORD_ID:  # GIBI discord
-            ladder_abbrev_arr = ["blitz", "ra2", "yr", "ra2-cl", "blitz-2v2"]
+            ladder_abbrev_arr = ["blitz", "ra2", "yr", "blitz-2v2"]
             qm_bot_channel = bot.get_channel(GIBI_BOT_CHANNEL_ID)
 
         if not qm_bot_channel:
@@ -293,31 +289,32 @@ async def fetch_active_qms(stats_json):
                 stats = stats_json[ladder_abbrev]
                 in_queue = stats['queuedPlayers']
 
-                total_in_qm = in_queue + (len(qms_arr) * 2)
-                if '-cl' in ladder_abbrev:
-                    clans_in_queue = stats['clans']
-                    total_in_qm = in_queue + (len(qms_arr) * 4)
-                    current_message = str(total_in_qm) + " in **" + title \
-                                      + "** Ladder:\n- " \
-                                      + str(in_queue) \
-                                      + " clan(s) in queue." + clans_in_queue_msg(clans_in_queue)
+                total_in_qm = in_queue + (len(qms_arr) * 2)  # players in queue + players in a match
+
+                if total_in_qm == 0:
+                    current_message = f"- **0** players in **{title}** Ladder\n"
                 else:
-                    if '2v2' in ladder_abbrev:
+                    if '-cl' in ladder_abbrev:
+                        clans_in_queue = stats['clans']
                         total_in_qm = in_queue + (len(qms_arr) * 4)
-                    current_message = str(total_in_qm) + " in **" + title \
-                                      + "** Ladder:\n- " + str(in_queue) + " in queue"
+                        current_message = f"- **{str(total_in_qm)}** in ** {title}** Ladder:\n - **{str(in_queue)}**" \
+                                          + " clan(s) in queue." + clans_in_queue_msg(clans_in_queue)
+                    else:
+                        if '2v2' in ladder_abbrev:
+                            total_in_qm = in_queue + (len(qms_arr) * 4)
+                        current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n - **{str(in_queue)}** in queue"
 
                 if qms_arr:
-                    current_message += "\n- " + str(len(qms_arr)) + " active matches:\n```\n- " \
-                                       + '\n- '.join(qms_arr) + "\n```\n"
-                else:
-                    current_message += "\n- 0 active matches.\n\n"
+                    current_message += f"\n - **{str(len(qms_arr))}** active matches:\n```\n - " \
+                                       + '\n - '.join(qms_arr) + "\n```"
+                elif total_in_qm > 0:
+                    current_message += "\n - **0** active matches.\n"
 
                 server_message += current_message
 
         if server_message:  # Send one message per server
             try:
-                await qm_bot_channel.send(server_message, delete_after=56)
+                await qm_bot_channel.send(server_message, delete_after=42)
             except HTTPException as he:
                 msg = f"Failed to send message '{server_message}' to '{server}'\nexception: '{he}'"
                 logger.error(msg)
