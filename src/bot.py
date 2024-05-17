@@ -276,7 +276,7 @@ async def fetch_active_qms(stats_json):
 
             title = ladder_abbrev.upper()
             if ladder_abbrev == 'ra2-cl':
-                title = 'Red Alert 2 Clan'
+                title = 'RA2 Clan'
 
             qms_arr = []
             if ladder_abbrev in current_matches_json:
