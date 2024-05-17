@@ -254,7 +254,7 @@ async def fetch_active_qms(stats_json):
         ladder_abbrev_arr = []
         qm_bot_channel = None
         if server.id == 188156159620939776:  # CnCNet discord
-            ladder_abbrev_arr = ["ra", "ra2", "ra2-cl", "yr", "blitz", "blitz-2v2"]
+            ladder_abbrev_arr = ["ra", "ra-2v2", "ra2", "ra2-cl", "yr", "blitz", "blitz-2v2"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
         elif server.id == YR_DISCORD_ID:  # YR discord
             ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "ra2-cl"]
