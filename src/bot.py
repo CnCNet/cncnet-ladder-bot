@@ -199,7 +199,11 @@ async def update_qm_bot_channel_name_task(stats_json):
         new_channel_name = "ladder-bot-" + str(max_val)
 
         # update channel name every 10 mins
-        await qm_bot_channel.edit(name=new_channel_name)
+        try:
+            await qm_bot_channel.edit(name=new_channel_name)
+        except discord.errors.HTTPException as e:
+            logger.log("failed to update channel name")
+            await send_message_to_log_channel(str(e))
 
 
 # Send error message to channel on discord for bot logs
@@ -305,8 +309,7 @@ async def fetch_active_qms(stats_json):
                         current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n - **{str(in_queue)}** in queue"
 
                 if qms_arr:
-                    current_message += f"\n - **{str(len(qms_arr))}** active matches:\n```\n - " \
-                                       + '\n - '.join(qms_arr) + "\n```"
+                    current_message += f"\n - **{str(len(qms_arr))}** active matches:\n```- {'.'.join(qms_arr)}```\n"
                 elif total_in_qm > 0:
                     current_message += "\n - **0** active matches.\n"
 
