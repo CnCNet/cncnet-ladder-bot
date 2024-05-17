@@ -263,7 +263,7 @@ async def fetch_active_qms(stats_json):
             ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr"]
             qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
         elif server.id == GIBI_DISCORD_ID:  # GIBI discord
-            ladder_abbrev_arr = ["blitz", "ra2", "yr", "blitz-2v2"]
+            ladder_abbrev_arr = ["blitz-2v2", "blitz", "ra2", "yr"]
             qm_bot_channel = bot.get_channel(GIBI_BOT_CHANNEL_ID)
 
         if not qm_bot_channel:
@@ -309,7 +309,8 @@ async def fetch_active_qms(stats_json):
                         current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n - **{str(in_queue)}** in queue"
 
                 if qms_arr:
-                    current_message += f"\n - **{str(len(qms_arr))}** active matches:\n```- {'.'.join(qms_arr)}```\n"
+                    qms_arr_joined = '\n- '.join(qms_arr)
+                    current_message += f"\n - **{str(len(qms_arr))}** active matches:\n```- {qms_arr_joined}```\n"
                 elif total_in_qm > 0:
                     current_message += "\n - **0** active matches.\n"
 
@@ -334,6 +335,12 @@ async def fetch_active_qms(stats_json):
                 await send_message_to_log_channel(msg)
                 return
     logger.log("completed fetching active matches")
+
+
+@bot.event
+async def on_rate_limit(rate_limit_info):
+    logger.log("WARNING - We are being rate limited")
+    await send_message_to_log_channel(rate_limit_info)
 
 
 @bot.command()
