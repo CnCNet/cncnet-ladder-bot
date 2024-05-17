@@ -4,6 +4,7 @@ from http.client import HTTPException
 
 import discord
 from apiclient import JsonResponseHandler
+from apiclient.exceptions import APIRequestError
 from discord import Forbidden, DiscordServerError
 from discord.ext import tasks
 from discord.utils import get
@@ -63,9 +64,21 @@ async def on_ready():
     logger.log(f"Ladders found: ({ladders_string})")
 
     await purge_bot_channel()  # Delete messages in bot-channel
-    fetch_active_qms.start()
-    update_qm_bot_channel_name_task.start()
+    minute_task.start()
     update_qm_roles.start()
+
+
+@tasks.loop(minutes=1)
+async def minute_task():
+
+    stats_json = cnc_api_client.fetch_stats("all")
+    if is_error(stats_json):
+        server_message = f"Error fetching stats for '/stats/all'. <@{BURG_ID}>\n{get_exception_msg(stats_json)}"
+        await send_message_to_log_channel(f"{server_message}")
+        return
+
+    await fetch_active_qms(stats_json)
+    await update_qm_bot_channel_name_task(stats_json)
 
 
 @bot.command()
@@ -88,6 +101,10 @@ async def maps(ctx, arg=""):
 
     maps_json = cnc_api_client.fetch_maps(arg.lower())
 
+    if is_error(maps_json):
+        await ctx.send(f"Error fetching maps for ladder {arg.lower()}")
+        await send_message_to_log_channel(get_exception_msg(maps_json))
+
     maps_arr = []
     for item in maps_json:
         maps_arr.append("(" + str(item["map_tier"]) + ") " + item["description"])
@@ -108,21 +125,23 @@ count = 10
 RECENT_ACTIVE_PLAYERS = []
 
 
-@tasks.loop(minutes=1)
-async def update_qm_bot_channel_name_task():
+async def update_qm_bot_channel_name_task(stats_json):
+
+    logger.log("beginning update_qm_bot_channel_name_task()")
 
     global count
     global RECENT_ACTIVE_PLAYERS
 
-    logger.log("beginning update_qm_bot_channel_name_task()")
+    if count == 10:
+        count = 0
+    else:
+        count += 1
+        return
 
     if not ladders:
         logger.error("Error: No ladders available")
         await send_message_to_log_channel("update_qm_bot_channel_name_task - Error: No ladders available")
         return
-
-    # fetch active stats
-    stats_json = cnc_api_client.fetch_stats("all")
 
     guilds = bot.guilds
     for server in guilds:
@@ -180,13 +199,7 @@ async def update_qm_bot_channel_name_task():
         new_channel_name = "ladder-bot-" + str(max_val)
 
         # update channel name every 10 mins
-        if count == 10:
-            await qm_bot_channel.edit(name=new_channel_name)
-
-    if count == 10:
-        count = 0
-    else:
-        count += 1
+        await qm_bot_channel.edit(name=new_channel_name)
 
 
 # Send error message to channel on discord for bot logs
@@ -214,19 +227,26 @@ def clans_in_queue_msg(clans_in_queue):
     return msg
 
 
-@tasks.loop(minutes=1)
-async def fetch_active_qms():
+def is_error(obj):
+    return isinstance(obj, Exception) or isinstance(obj, APIRequestError)
+
+
+def get_exception_msg(e):
+    return f"Status code: '{e.status_code}', message: '{e.message}', Info: '{e.info}', Cause: '{e.__cause__}'"
+
+
+async def fetch_active_qms(stats_json):
     if not ladders:
         logger.error("Error: No ladders available")
         return
 
     current_matches_json = cnc_api_client.fetch_current_matches("all")
 
-    stats_json = cnc_api_client.fetch_stats("all")
-    if not stats_json:
-        server_message = f"Error fetching stats for '{all}'. <@{BURG_ID}>"
-        await send_message_to_log_channel(f"{server_message}")
+    if is_error(current_matches_json):
+        fail_msg = f"Error fetching current_matches'. <@{BURG_ID}>\n{get_exception_msg(current_matches_json)}"
+        await send_message_to_log_channel(f"{fail_msg}")
         return
+
 
     guilds = bot.guilds
     for server in guilds:
@@ -259,24 +279,18 @@ async def fetch_active_qms():
                 title = 'Red Alert 2 Clan'
 
             qms_arr = []
-            if current_matches_json and ladder_abbrev in current_matches_json:
+            if ladder_abbrev in current_matches_json:
                 for game in current_matches_json[ladder_abbrev]:
                     qms_arr.append(game.strip())
-            # else:
-                # print(f"Error fetching active matches from {ladder_abbrev}.")
-                # server_message = "Error fetching active matches from the Ladder."
-                # continue
-
-            # continue
 
             # Get players in queue
-            stats = stats_json[ladder_abbrev]
-            if not stats:
-                server_message = f"Error fetching stats for {ladder_abbrev}. <@{BURG_ID}>"
-                await send_message_to_log_channel(f"{server_message}")
+            if ladder_abbrev not in stats_json:
+                send_msg = f"Ladder not found in stats, {ladder_abbrev}, {stats_json[ladder_abbrev]}. <@{BURG_ID}>"
+                await send_message_to_log_channel(f"{send_msg}")
                 server_message = f"Failed fetching ladder stats for {ladder_abbrev}"
                 continue
             else:
+                stats = stats_json[ladder_abbrev]
                 in_queue = stats['queuedPlayers']
 
                 total_in_qm = in_queue + (len(qms_arr) * 2)
@@ -305,17 +319,17 @@ async def fetch_active_qms():
             try:
                 await qm_bot_channel.send(server_message, delete_after=56)
             except HTTPException as he:
-                msg = f"Failed to send message: '{server_message}', exception '{he}'"
+                msg = f"Failed to send message '{server_message}' to '{server}'\nexception: '{he}'"
                 logger.error(msg)
                 await send_message_to_log_channel(msg)
                 return
             except Forbidden as f:
-                msg = f"Failed to send message due to forbidden error: '{server_message}', exception '{f}'"
+                msg = f"Failed to send message '{server_message}' \nforbidden error:  to '{server}' exception: '{f}'"
                 logger.error(msg)
                 await send_message_to_log_channel(msg)
                 return
             except DiscordServerError as de:
-                msg = f"Failed to send message due to DiscordServerError:  '{server_message}', exception '{de}'"
+                msg = f"Failed to send message '{server_message}'\nDiscordServerError: to '{server}' exception: '{de}'"
                 logger.error(msg)
                 await send_message_to_log_channel(msg)
                 return
@@ -394,8 +408,8 @@ async def assign_qm_role():
 
         # Fetch QM player ranks
         rankings_json = cnc_api_client.fetch_rankings()
-        if not rankings_json:
-            logger.log("No ranking results found, exiting assign_qm_role().")
+        if is_error(rankings_json):
+            logger.log(f"No ranking results found, exiting assign_qm_role(). {get_exception_msg(rankings_json)}")
             return
 
         ladder_abbrev_arr = ["RA2", "YR"]

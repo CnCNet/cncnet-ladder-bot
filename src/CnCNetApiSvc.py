@@ -46,5 +46,5 @@ class CnCNetApiSvc(APIClient):
             return self.get(url)
         except APIRequestError or Exception as e:
             logger.error(f"Status code: '{e.status_code}', message: '{e.message}', Info: '{e.info}', Cause: '{e.__cause__}'")
-            return None
+            return e
 
