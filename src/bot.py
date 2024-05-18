@@ -66,7 +66,7 @@ async def on_ready():
 
     await purge_bot_channel()  # Delete messages in bot-channel
     minute_task.start()
-    # update_qm_roles.start()
+    update_qm_roles.start()
 
 
 @tasks.loop(seconds=45)
@@ -124,7 +124,7 @@ async def maps(ctx, arg=""):
               f"\n```" \
               f"{maps_string}" \
               f"\n```"
-    await ctx.send(message[:400])
+    await ctx.send(message[:3000])
 
 
 count = 10
@@ -211,12 +211,12 @@ async def update_qm_bot_channel_name_task(stats_json):
 async def send_message_to_log_channel(msg):
     channel = bot.get_channel(CNCNET_LADDER_DISCORD_BOT_LOGS_ID)
 
-    if len(msg) > 200:
+    if len(msg) > 3000:
         buffer = StringIO(msg)
         f = discord.File(buffer, filename=f"error.txt")
         await channel.send(file=f)
     else:
-        await channel.send(msg[:400])
+        await channel.send(msg[:3000])
 
 
 def clans_in_queue_msg(clans_in_queue):
@@ -325,7 +325,7 @@ async def fetch_active_qms(stats_json):
 
         if server_message:  # Send one message per server
             try:
-                await qm_bot_channel.send(server_message[:400], delete_after=42)
+                await qm_bot_channel.send(server_message[:3000], delete_after=42)
             except HTTPException as he:
                 msg = f"Failed to send message '{server_message}' to '{server}'\nexception: '{he}'"
                 logger.error(msg)
