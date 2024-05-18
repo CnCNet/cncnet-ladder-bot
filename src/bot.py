@@ -1,6 +1,7 @@
 # bot.py
 import os
 from http.client import HTTPException
+from io import StringIO
 
 import discord
 from apiclient import JsonResponseHandler
@@ -123,7 +124,7 @@ async def maps(ctx, arg=""):
               f"\n```" \
               f"{maps_string}" \
               f"\n```"
-    await ctx.send(message)
+    await ctx.send(message[:400])
 
 
 count = 10
@@ -209,7 +210,13 @@ async def update_qm_bot_channel_name_task(stats_json):
 # Send error message to channel on discord for bot logs
 async def send_message_to_log_channel(msg):
     channel = bot.get_channel(CNCNET_LADDER_DISCORD_BOT_LOGS_ID)
-    await channel.send(msg)
+
+    if len(msg) > 200:
+        buffer = StringIO(msg)
+        f = discord.File(buffer, filename=f"error.txt")
+        await channel.send(file=f)
+    else:
+        await channel.send(msg[:400])
 
 
 def clans_in_queue_msg(clans_in_queue):
@@ -318,7 +325,7 @@ async def fetch_active_qms(stats_json):
 
         if server_message:  # Send one message per server
             try:
-                await qm_bot_channel.send(server_message, delete_after=42)
+                await qm_bot_channel.send(server_message[:400], delete_after=42)
             except HTTPException as he:
                 msg = f"Failed to send message '{server_message}' to '{server}'\nexception: '{he}'"
                 logger.error(msg)
