@@ -214,7 +214,7 @@ async def send_message_to_log_channel(msg):
     if len(msg) > 3000:
         buffer = StringIO(msg)
         f = discord.File(buffer, filename=f"error.txt")
-        await channel.send(file=f)
+        await channel.send(f"Error <@{BURG_ID}>", file=f)
     else:
         await channel.send(msg[:3000])
 
@@ -364,8 +364,11 @@ async def purge_bot_channel():
     for server in guilds:
         for channel in server.channels:
             if QM_BOT_CHANNEL_NAME in channel.name:
-                deleted = await channel.purge()
-                logger.log(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
+                try:
+                    deleted = await channel.purge()
+                    logger.log(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
+                except discord.errors.NotFound or Exception as e:
+                    await send_message_to_log_channel(f"Failed to delete message from server '{server.name}', {str(e)}")
 
 
 def is_in_bot_channel(ctx):
@@ -383,7 +386,7 @@ async def update_qm_roles():
 
     await assign_qm_role()  # assign discord members QM roles
 
-    await send_message_to_log_channel("completed updating QM roles")
+    logger.log("completed updating QM roles")
 
 
 async def remove_qm_roles():
