@@ -150,16 +150,16 @@ async def update_qm_bot_channel_name_task(stats_json):
         qm_bot_channel = None
 
         if server.id == 188156159620939776:  # CnCNet discord
-            ladder_abbrev_arr = ["ra", "ra2", "yr", "blitz", "blitz-2v2", "ra2-cl", "yr-2v2"]
+            ladder_abbrev_arr = ["ra", "ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2", "yr-2v2"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
         elif server.id == YR_DISCORD_ID:  # YR discord
-            ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "ra2-cl", "yr-2v2"]
+            ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2", "yr-2v2"]
             qm_bot_channel = bot.get_channel(YR_DISCORD_QM_BOT_ID)
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
-            ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-cl", "yr-2v2"]
+            ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-2v2", "yr-2v2"]
             qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
         elif server.id == GIBI_DISCORD_ID:  # GIBI discord
-            ladder_abbrev_arr = ["blitz-2v2", "blitz",  "ra2", "yr", "ra2-cl", "yr-2v2"]
+            ladder_abbrev_arr = ["blitz-2v2", "blitz",  "ra2", "yr", "ra2-2v2", "yr-2v2"]
             qm_bot_channel = bot.get_channel(GIBI_BOT_CHANNEL_ID)
 
         if not ladder_abbrev_arr:
@@ -261,10 +261,10 @@ async def fetch_active_qms(stats_json):
         ladder_abbrev_arr = []
         qm_bot_channel = None
         if server.id == 188156159620939776:  # CnCNet discord
-            ladder_abbrev_arr = ["ra", "ra-2v2", "ra2", "ra2-cl", "yr", "blitz", "blitz-2v2"]
+            ladder_abbrev_arr = ["ra", "ra-2v2", "ra2", "ra2-2v2", "yr", "blitz", "blitz-2v2"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
         elif server.id == YR_DISCORD_ID:  # YR discord
-            ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "yr-2v2", "ra2-cl"]
+            ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "yr-2v2", "ra2-2v2"]
             qm_bot_channel = bot.get_channel(YR_DISCORD_QM_BOT_ID)
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
             ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "yr-2v2"]
