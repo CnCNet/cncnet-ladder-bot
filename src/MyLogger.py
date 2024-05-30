@@ -2,26 +2,45 @@ import logging
 
 
 class MyLogger:
-    def __init__(self, log_filename, log_level=logging.INFO):
-        self.log_filename = log_filename
-        self.log_level = log_level
+    def __init__(self, debug_log_filename='debug.log', info_log_filename='info.log'):
+        self.logger = logging.getLogger('my_logger')
+        self.logger.setLevel(logging.DEBUG)  # Set the logger to the lowest level to capture all messages
 
-        logging.basicConfig(filename=self.log_filename, level=self.log_level, format="%(asctime)s - %(levelname)s - %(message)s")
+        # Create handlers
+        debug_handler = logging.FileHandler(debug_log_filename)
+        debug_handler.setLevel(logging.DEBUG)
+
+        info_handler = logging.FileHandler(info_log_filename)
+        info_handler.setLevel(logging.INFO)
+
+        # Create formatter
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+        # Add formatter to handlers
+        debug_handler.setFormatter(formatter)
+        info_handler.setFormatter(formatter)
+
+        # Add handlers to the logger
+        self.logger.addHandler(debug_handler)
+        self.logger.addHandler(info_handler)
 
     def log(self, message):
-        logging.info(message)
+        self.logger.info(message)
 
     def error(self, message):
-        logging.error(message)
+        self.logger.error(message)
+
+    def debug(self, message):
+        self.logger.debug(message)
 
     def warning(self, message):
-        logging.warning(message)
+        self.logger.warning(message)
 
     def critical(self, message):
-        logging.critical(message)
+        self.logger.critical(message)
 
     def exception(self, message):
-        logging.exception(message)
+        self.logger.exception(message)
 
     def shutdown(self):
         logging.shutdown()

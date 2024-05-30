@@ -46,7 +46,7 @@ BLITZ_DISCORD_QM_BOT_ID = 1040396984164548729  # RA2 World Series.qm-bot
 async def on_ready():
 
     global logger
-    logger = MyLogger("bot.txt")
+    logger = MyLogger()
     logger.log("bot online")
 
     global cnc_api_client
@@ -133,7 +133,7 @@ RECENT_ACTIVE_PLAYERS = []
 
 async def update_qm_bot_channel_name_task(stats_json):
 
-    logger.log("beginning update_qm_bot_channel_name_task()")
+    logger.debug("beginning update_qm_bot_channel_name_task()")
 
     global count
     global RECENT_ACTIVE_PLAYERS
@@ -196,14 +196,14 @@ async def update_qm_bot_channel_name_task(stats_json):
         # from the last 10 mins, grab the most players in queue
         max_val = max(RECENT_ACTIVE_PLAYERS)
 
-        logger.log(f"count={count}, num_players={num_players}")
+        logger.info(f"count={count}, arr={str(RECENT_ACTIVE_PLAYERS)}, num_players={num_players}, max={str(max_val)}")
         new_channel_name = "ladder-bot-" + str(max_val)
 
         # update channel name every 10 mins
         try:
             await qm_bot_channel.edit(name=new_channel_name)
         except discord.errors.HTTPException as e:
-            logger.log("failed to update channel name")
+            logger.error("failed to update channel name")
             await send_message_to_log_channel(str(e))
 
 
@@ -341,12 +341,12 @@ async def fetch_active_qms(stats_json):
                 logger.error(msg)
                 await send_message_to_log_channel(msg)
                 return
-    logger.log("completed fetching active matches")
+    logger.debug("completed fetching active matches")
 
 
 @bot.event
 async def on_rate_limit(rate_limit_info):
-    logger.log("WARNING - We are being rate limited")
+    logger.warning("WARNING - We are being rate limited")
     await send_message_to_log_channel(rate_limit_info)
 
 
@@ -366,7 +366,7 @@ async def purge_bot_channel():
             if QM_BOT_CHANNEL_NAME in channel.name:
                 try:
                     deleted = await channel.purge()
-                    logger.log(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
+                    logger.debug(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
                 except discord.errors.NotFound or Exception as e:
                     await send_message_to_log_channel(f"Failed to delete message from server '{server.name}', {str(e)}")
 
@@ -378,7 +378,7 @@ def is_in_bot_channel(ctx):
 @tasks.loop(hours=8)
 async def update_qm_roles():
 
-    logger.log("Starting update_qm_roles")
+    logger.debug("Starting update_qm_roles")
 
     await purge_bot_channel()  # purge bot channel periodically in case a message wasn't deleted
 
@@ -386,11 +386,11 @@ async def update_qm_roles():
 
     await assign_qm_role()  # assign discord members QM roles
 
-    logger.log("completed updating QM roles")
+    logger.debug("completed updating QM roles")
 
 
 async def remove_qm_roles():
-    logger.log("Removing QM roles")
+    logger.debug("Removing QM roles")
     guilds = bot.guilds
 
     for server in guilds:
@@ -411,11 +411,11 @@ async def remove_qm_roles():
                 elif 'ra2 qm' in role.name.lower():
                     await member.remove_roles(role)
 
-    logger.log("Finished removing QM roles")
+    logger.debug("Finished removing QM roles")
 
 
 async def assign_qm_role():
-    logger.log("Assigning QM Roles")
+    logger.debug("Assigning QM Roles")
     guilds = bot.guilds
 
     for server in guilds:
@@ -496,7 +496,7 @@ async def assign_qm_role():
                 text += message + "\n"
 
                 await member.add_roles(role)  # Add the Discord QM role
-    logger.log("Completed assigning QM Roles")
+    logger.debug("Completed assigning QM Roles")
 
 
 bot.run(TOKEN)
