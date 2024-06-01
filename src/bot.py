@@ -79,7 +79,7 @@ async def minute_task():
 
     stats_json = cnc_api_client.fetch_stats("all")
     if is_error(stats_json):
-        server_message = f"Error fetching stats for '/stats/all'. <@{BURG_ID}>\n{get_exception_msg(stats_json)}"
+        server_message = f"Error fetching stats for '/stats/all'.\n{get_exception_msg(stats_json)}"
         await send_message_to_log_channel(f"{server_message}")
         return
 
@@ -89,7 +89,7 @@ async def minute_task():
 
 @bot.command()
 async def maps(ctx, arg=""):
-    logger.log("Fetching maps for ladder '{arg}'")
+    logger.debug("Fetching maps for ladder '{arg}'")
 
     if not ladders:
         await ctx.send("Error: No ladders available")
@@ -128,6 +128,7 @@ async def maps(ctx, arg=""):
 
 
 count = 10
+total_count = 0
 RECENT_ACTIVE_PLAYERS = []
 
 
@@ -136,7 +137,10 @@ async def update_qm_bot_channel_name_task(stats_json):
     logger.debug("beginning update_qm_bot_channel_name_task()")
 
     global count
+    global total_count
     global RECENT_ACTIVE_PLAYERS
+
+    total_count = total_count + 1
 
     if count == 10:
         count = 0
@@ -150,7 +154,7 @@ async def update_qm_bot_channel_name_task(stats_json):
         qm_bot_channel = None
 
         if server.id == 188156159620939776:  # CnCNet discord
-            ladder_abbrev_arr = ["ra", "ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2", "yr-2v2"]
+            ladder_abbrev_arr = ["d2k", "ra", "ra-2v2", "ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2", "yr-2v2"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
         elif server.id == YR_DISCORD_ID:  # YR discord
             ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2", "yr-2v2"]
@@ -194,10 +198,10 @@ async def update_qm_bot_channel_name_task(stats_json):
             RECENT_ACTIVE_PLAYERS.pop(0)
 
         # from the last 10 mins, grab the most players in queue
-        max_val = max(RECENT_ACTIVE_PLAYERS)
+        avg_val = (sum(RECENT_ACTIVE_PLAYERS) // len(RECENT_ACTIVE_PLAYERS)) + 1
 
-        logger.info(f"count={count}, arr={str(RECENT_ACTIVE_PLAYERS)}, num_players={num_players}, max={str(max_val)}")
-        new_channel_name = "ladder-bot-" + str(max_val)
+        logger.log(f"count={count}, arr={str(RECENT_ACTIVE_PLAYERS)}, num_players={num_players}, avg={str(avg_val)}")
+        new_channel_name = "ladder-bot-" + str(avg_val)
 
         # update channel name every 10 mins
         try:
@@ -214,7 +218,7 @@ async def send_message_to_log_channel(msg):
     if len(msg) > 3000:
         buffer = StringIO(msg)
         f = discord.File(buffer, filename=f"error.txt")
-        await channel.send(f"Error <@{BURG_ID}>", file=f)
+        await channel.send(f"Error", file=f)
     else:
         await channel.send(msg[:3000])
 
@@ -251,7 +255,7 @@ async def fetch_active_qms(stats_json):
     current_matches_json = cnc_api_client.fetch_current_matches("all")
 
     if is_error(current_matches_json):
-        fail_msg = f"Error fetching current_matches'. <@{BURG_ID}>\n{get_exception_msg(current_matches_json)}"
+        fail_msg = f"Error fetching current_matches'.\n{get_exception_msg(current_matches_json)}"
         await send_message_to_log_channel(f"{fail_msg}")
         return
 
@@ -261,16 +265,16 @@ async def fetch_active_qms(stats_json):
         ladder_abbrev_arr = []
         qm_bot_channel = None
         if server.id == 188156159620939776:  # CnCNet discord
-            ladder_abbrev_arr = ["ra", "ra-2v2", "ra2", "ra2-2v2", "yr", "blitz", "blitz-2v2"]
+            ladder_abbrev_arr = ["d2k", "ra", "ra-2v2", "ra2", "ra2-2v2", "yr", "yr-2v2", "blitz", "blitz-2v2"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
         elif server.id == YR_DISCORD_ID:  # YR discord
             ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "yr-2v2", "ra2-2v2"]
             qm_bot_channel = bot.get_channel(YR_DISCORD_QM_BOT_ID)
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
-            ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "yr-2v2"]
+            ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-2v2"]
             qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
         elif server.id == GIBI_DISCORD_ID:  # GIBI discord
-            ladder_abbrev_arr = ["blitz-2v2", "blitz", "ra2", "yr", "yr-2v2"]
+            ladder_abbrev_arr = ["blitz-2v2", "blitz", "ra2", "yr", "ra2-2v2"]
             qm_bot_channel = bot.get_channel(GIBI_BOT_CHANNEL_ID)
 
         if not qm_bot_channel:
@@ -292,7 +296,7 @@ async def fetch_active_qms(stats_json):
 
             # Get players in queue
             if ladder_abbrev not in stats_json:
-                send_msg = f"Ladder not found in stats, {ladder_abbrev}, {stats_json[ladder_abbrev]}. <@{BURG_ID}>"
+                send_msg = f"Ladder not found in stats, {ladder_abbrev}, {stats_json[ladder_abbrev]}."
                 await send_message_to_log_channel(f"{send_msg}")
                 server_message = f"Failed fetching ladder stats for {ladder_abbrev}"
                 continue
@@ -377,6 +381,10 @@ def is_in_bot_channel(ctx):
 
 @tasks.loop(hours=8)
 async def update_qm_roles():
+
+    global total_count
+    if total_count < 60:
+        return
 
     logger.debug("Starting update_qm_roles")
 
