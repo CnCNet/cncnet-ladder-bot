@@ -73,19 +73,23 @@ async def on_ready():
 @tasks.loop(seconds=45)
 async def minute_task():
 
-    if not ladders:
-        logger.error("Error: No ladders available")
-        await send_message_to_log_channel("update_qm_bot_channel_name_task - Error: No ladders available")
-        return
+    try:
+        if not ladders:
+            logger.error("Error: No ladders available")
+            await send_message_to_log_channel("update_qm_bot_channel_name_task - Error: No ladders available")
+            return
 
-    stats_json = cnc_api_client.fetch_stats("all")
-    if is_error(stats_json):
-        server_message = f"Error fetching stats for '/stats/all'.\n{get_exception_msg(stats_json)}"
-        await send_message_to_log_channel(f"{server_message}")
-        return
+        stats_json = cnc_api_client.fetch_stats("all")
+        if is_error(stats_json):
+            server_message = f"Error fetching stats for '/stats/all'.\n{get_exception_msg(stats_json)}"
+            await send_message_to_log_channel(f"{server_message}")
+            return
 
-    await fetch_active_qms(stats_json)
-    await update_qm_bot_channel_name_task(stats_json)
+        await fetch_active_qms(stats_json)
+        await update_qm_bot_channel_name_task(stats_json)
+    except Exception as e:
+        logger.error(f"Cause: '{e.__cause__}'")
+        logger.error(str(e))
 
 
 @bot.command()
