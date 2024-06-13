@@ -1,5 +1,6 @@
 # bot.py
 import os
+import time
 from http.client import HTTPException
 from io import StringIO
 
@@ -250,6 +251,13 @@ def get_exception_msg(e):
     return f"Status code: '{e.status_code}', message: '{e.message}', Info: '{e.info}', Cause: '{e.__cause__}'"
 
 
+async def get_latest_msg(channel):
+    async for message in channel.history(limit=1):
+        return message
+
+    return None
+
+
 async def fetch_active_qms(stats_json):
 
     current_matches_json = cnc_api_client.fetch_current_matches("all")
@@ -327,9 +335,15 @@ async def fetch_active_qms(stats_json):
 
                 server_message += current_message
 
+        server_message += f"\n*Updated* <t:{int(time.time())}:R>"
+
         if server_message:  # Send one message per server
             try:
-                await qm_bot_channel.send(server_message[:3000], delete_after=42)
+                msg = await get_latest_msg(qm_bot_channel)
+                if not msg:
+                    await qm_bot_channel.send(server_message[:2000])  # No msg found, so send a new msg
+                else:
+                    await msg.edit(content=server_message[:2000])  # edit the existing msg
             except HTTPException as he:
                 msg = f"Failed to send message '{server_message}' to '{server}'\nexception: '{he}'"
                 logger.error(msg)
@@ -385,6 +399,9 @@ async def update_qm_roles():
     global total_count
     if total_count < 60:
         return
+
+    if total_count > 60:
+        total_count = 60
 
     logger.debug("Starting update_qm_roles")
 
