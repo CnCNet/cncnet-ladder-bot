@@ -2,3 +2,4 @@
 .idea/
 **/testing.py
 src/__pycache__/*
+*.log
