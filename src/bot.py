@@ -65,7 +65,7 @@ async def on_ready():
     ladders_string = ", ".join(ladders)
     logger.log(f"Ladders found: ({ladders_string})")
 
-    await purge_bot_channel()  # Delete messages in bot-channel
+    await purge_bot_channel(0)  # Delete messages in bot-channel
     minute_task.start()
     update_qm_roles.start()
 
@@ -87,9 +87,10 @@ async def minute_task():
 
         await fetch_active_qms(stats_json)
         await update_qm_bot_channel_name_task(stats_json)
-    except Exception as e:
+    except DiscordServerError or Exception as e:
         logger.error(f"Cause: '{e.__cause__}'")
         logger.error(str(e))
+        await send_message_to_log_channel(str(e))
 
 
 @bot.command()
@@ -211,7 +212,7 @@ async def update_qm_bot_channel_name_task(stats_json):
         # update channel name every 10 mins
         try:
             await qm_bot_channel.edit(name=new_channel_name)
-        except discord.errors.HTTPException as e:
+        except DiscordServerError or discord.errors.HTTPException as e:
             logger.error("failed to update channel name")
             await send_message_to_log_channel(str(e))
 
@@ -377,19 +378,24 @@ async def purge_bot_channel_command(ctx):
     if not ctx.message.author.guild_permissions.administrator:
         logger.error(f"{ctx.message.author} is not admin, exiting command.")
         return
-    await purge_bot_channel()
+    await purge_bot_channel(0)
 
 
-async def purge_bot_channel():
+async def purge_bot_channel(min_messages: int):
     guilds = bot.guilds
 
     for server in guilds:
         for channel in server.channels:
             if QM_BOT_CHANNEL_NAME in channel.name:
                 try:
-                    deleted = await channel.purge()
-                    logger.debug(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
-                except discord.errors.NotFound or Exception as e:
+                    message_count = 0
+                    async for _ in channel.history(limit=2):
+                        message_count += 1
+                        if message_count > min_messages:
+                            deleted = await channel.purge()
+                            logger.debug(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
+                            return
+                except DiscordServerError or discord.errors.NotFound or Exception as e:
                     await send_message_to_log_channel(f"Failed to delete message from server '{server.name}', {str(e)}")
 
 
@@ -409,7 +415,7 @@ async def update_qm_roles():
 
     logger.debug("Starting update_qm_roles")
 
-    await purge_bot_channel()  # purge bot channel periodically in case a message wasn't deleted
+    await purge_bot_channel(1)  # purge excess messages from bot channel periodically in case a message wasn't deleted
 
     await remove_qm_roles()  # remove discord members QM roles
 
