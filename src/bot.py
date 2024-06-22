@@ -160,16 +160,16 @@ async def update_qm_bot_channel_name_task(stats_json):
         qm_bot_channel = None
 
         if server.id == 188156159620939776:  # CnCNet discord
-            ladder_abbrev_arr = ["d2k", "ra", "ra-2v2", "ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2", "yr-2v2"]
+            ladder_abbrev_arr = ["d2k", "ra", "ra-2v2", "ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
         elif server.id == YR_DISCORD_ID:  # YR discord
-            ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2", "yr-2v2"]
+            ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2"]
             qm_bot_channel = bot.get_channel(YR_DISCORD_QM_BOT_ID)
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
-            ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-2v2", "yr-2v2"]
+            ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-2v2"]
             qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
         elif server.id == GIBI_DISCORD_ID:  # GIBI discord
-            ladder_abbrev_arr = ["blitz-2v2", "blitz",  "ra2", "yr", "ra2-2v2", "yr-2v2"]
+            ladder_abbrev_arr = ["blitz-2v2", "blitz",  "ra2", "yr", "ra2-2v2"]
             qm_bot_channel = bot.get_channel(GIBI_BOT_CHANNEL_ID)
 
         if not ladder_abbrev_arr:
@@ -206,7 +206,7 @@ async def update_qm_bot_channel_name_task(stats_json):
         # from the last 10 mins, grab the most players in queue
         avg_val = (sum(RECENT_ACTIVE_PLAYERS) // len(RECENT_ACTIVE_PLAYERS)) + 1
 
-        logger.log(f"count={count}, arr={str(RECENT_ACTIVE_PLAYERS)}, num_players={num_players}, avg={str(avg_val)}")
+        logger.debug(f"count={count}, arr={str(RECENT_ACTIVE_PLAYERS)}, num_players={num_players}, avg={str(avg_val)}")
         new_channel_name = "ladder-bot-" + str(avg_val)
 
         # update channel name every 10 mins
@@ -278,10 +278,10 @@ async def fetch_active_qms(stats_json):
         ladder_abbrev_arr = []
         qm_bot_channel = None
         if server.id == 188156159620939776:  # CnCNet discord
-            ladder_abbrev_arr = ["d2k", "ra", "ra-2v2", "ra2", "ra2-2v2", "yr", "yr-2v2", "blitz", "blitz-2v2"]
+            ladder_abbrev_arr = ["d2k", "ra", "ra-2v2", "ra2", "ra2-2v2", "yr",  "blitz", "blitz-2v2"]
             qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
         elif server.id == YR_DISCORD_ID:  # YR discord
-            ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "yr-2v2", "ra2-2v2"]
+            ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2"]
             qm_bot_channel = bot.get_channel(YR_DISCORD_QM_BOT_ID)
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
             ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-2v2"]
@@ -309,7 +309,7 @@ async def fetch_active_qms(stats_json):
 
             # Get players in queue
             if ladder_abbrev not in stats_json:
-                send_msg = f"Ladder not found in stats, {ladder_abbrev}, {stats_json[ladder_abbrev]}."
+                send_msg = f"Ladder not found in stats, {ladder_abbrev}."
                 await send_message_to_log_channel(f"{send_msg}")
                 server_message = f"Failed fetching ladder stats for {ladder_abbrev}"
                 continue
@@ -381,7 +381,7 @@ async def purge_bot_channel_command(ctx):
     await purge_bot_channel(0)
 
 
-async def purge_bot_channel(min_messages: int):
+async def purge_bot_channel(keep_messages: int):  # keep up to 'keep_messages' messages
     guilds = bot.guilds
 
     for server in guilds:
@@ -391,7 +391,7 @@ async def purge_bot_channel(min_messages: int):
                     message_count = 0
                     async for _ in channel.history(limit=2):
                         message_count += 1
-                        if message_count > min_messages:
+                        if message_count > keep_messages:
                             deleted = await channel.purge()
                             logger.debug(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
                             return
