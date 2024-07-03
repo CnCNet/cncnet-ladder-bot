@@ -50,6 +50,11 @@ async def on_ready():
     logger = MyLogger()
     logger.log("bot online")
 
+    # guild = discord.utils.get(bot.guilds, id=GIBI_DISCORD_ID)
+    # if guild:
+    #     print(f'Leaving server: {guild.name} (ID: {guild.id})')
+    #     await guild.leave()
+
     global cnc_api_client
     cnc_api_client = CnCNetApiSvc(
         response_handler=JsonResponseHandler
@@ -87,7 +92,7 @@ async def minute_task():
 
         await fetch_active_qms(stats_json)
         await update_qm_bot_channel_name_task(stats_json)
-    except DiscordServerError or Exception as e:
+    except DiscordServerError or Exception or KeyError as e:
         logger.error(f"Cause: '{e.__cause__}'")
         logger.error(str(e))
         await send_message_to_log_channel(str(e))
