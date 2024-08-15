@@ -321,6 +321,7 @@ async def fetch_active_qms(stats_json):
             else:
                 stats = stats_json[ladder_abbrev]
                 in_queue = stats['queuedPlayers']
+                pros_in_queue = stats['queuedPros']
 
                 total_in_qm = in_queue + (len(qms_arr) * 2)  # players in queue + players in a match
 
@@ -330,16 +331,25 @@ async def fetch_active_qms(stats_json):
                     if '-cl' in ladder_abbrev:
                         clans_in_queue = stats['clans']
                         total_in_qm = in_queue + (len(qms_arr) * 4)
-                        current_message = f"- **{str(total_in_qm)}** in ** {title}** Ladder:\n - **{str(in_queue)}**" \
+                        current_message = f"- **{str(total_in_qm)}** in ** {title}** Ladder:\n" \
+                                          f" - **{str(in_queue)}**" \
                                           + " clan(s) in queue." + clans_in_queue_msg(clans_in_queue)
                     else:
                         if '2v2' in ladder_abbrev:
                             total_in_qm = in_queue + (len(qms_arr) * 4)
-                        current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n - **{str(in_queue)}** in queue"
+
+                            current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \
+                                              f" - **{str(in_queue - pros_in_queue)}** non-pros in queue\n" \
+                                              f" - **{str(pros_in_queue)}** pros in queue"
+                        else:
+                            current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \
+                                              f" - **{str(in_queue - pros_in_queue)}** players in queue"
 
                 if qms_arr:
                     qms_arr_joined = '\n- '.join(qms_arr)
-                    current_message += f"\n - **{str(len(qms_arr))}** active matches:\n```- {qms_arr_joined}```\n"
+                    current_message += f"\n - **{str(len(qms_arr))}** active matches:\n" \
+                                       f"```- {qms_arr_joined}```" \
+                                       f"\n"
                 elif total_in_qm > 0:
                     current_message += "\n - **0** active matches.\n"
 
