@@ -99,6 +99,42 @@ async def minute_task():
 
 
 @bot.command()
+async def pros(ctx, arg=""):
+    logger.debug("Fetching pros for ladder '{arg}'")
+
+    if not ladders:
+        await ctx.send("Error: No ladders available")
+        return
+
+    if not arg:
+        ladders_string = ', '.join(ladders)
+        await ctx.send(f"No ladder provided, select a valid ladder from `[{ladders_string}]`, like `!pros blitz-2v2`")
+        return
+
+    if arg.lower() not in ladders:
+        ladders_string = ', '.join(ladders)
+        await ctx.send(f"{arg.lower()} is not a valid ladder from `{ladders_string}`")
+        return
+
+    pros_arr = cnc_api_client.fetch_pros(arg.lower())
+
+    if is_error(pros_arr):
+        await ctx.send(f"Error fetching pros for ladder {arg.lower()}")
+        await send_message_to_log_channel(get_exception_msg(pros_arr))
+
+    if not pros:
+        await ctx.send(f"Error: No pros found in ladder': {arg.upper()}'")
+        return
+
+    pros_string = "\n" + "\n".join(pros_arr)
+    message = f"{len(pros_arr)} **{arg.upper()}** pros:" \
+              f"\n```" \
+              f"{pros_string}" \
+              f"\n```"
+    await ctx.send(message[:3000])
+
+
+@bot.command()
 async def maps(ctx, arg=""):
     logger.debug("Fetching maps for ladder '{arg}'")
 
@@ -270,6 +306,8 @@ async def get_latest_msg(channel):
 
 async def fetch_active_qms(stats_json):
 
+    logger.debug("Fetching active qms")
+
     current_matches_json = cnc_api_client.fetch_current_matches("all")
 
     if is_error(current_matches_json):
@@ -339,7 +377,7 @@ async def fetch_active_qms(stats_json):
                             total_in_qm = in_queue + (len(qms_arr) * 4)
 
                             current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \
-                                              f" - **{str(in_queue - pros_in_queue)}** non-pros in queue\n" \
+                                              f" - **{str(max(0, in_queue - pros_in_queue))}** non-pros in queue\n" \
                                               f" - **{str(pros_in_queue)}** pros in queue"
                         else:
                             current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \

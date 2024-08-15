@@ -25,6 +25,10 @@ class CnCNetApiSvc(APIClient):
         url = f"{self.host}/api/v1/qm/ladder/{ladder}/maps/public"
         return self.get_call(url)
 
+    def fetch_pros(self, ladder):
+        url = f"{self.host}/api/v1/qm/ladder/{ladder}/pros"
+        return self.get_call(url)
+
     def fetch_current_matches(self, ladder):
         url = f"{self.host}/api/v1/qm/ladder/{ladder}/current_matches"
         return self.get_call(url)
