@@ -381,7 +381,7 @@ async def fetch_active_qms(stats_json):
                                               f" - **{str(pros_in_queue)}** pros in queue"
                         else:
                             current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \
-                                              f" - **{str(in_queue - pros_in_queue)}** players in queue"
+                                              f" - **{str(in_queue)}** players in queue"
 
                 if qms_arr:
                     qms_arr_joined = '\n- '.join(qms_arr)
