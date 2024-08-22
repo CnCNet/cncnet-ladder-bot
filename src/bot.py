@@ -126,11 +126,8 @@ async def pros(ctx, arg=""):
         await ctx.send(f"Error: No pros found in ladder': {arg.upper()}'")
         return
 
-    pros_string = "\n" + "\n".join(pros_arr)
-    message = f"{len(pros_arr)} **{arg.upper()}** pros:" \
-              f"\n```" \
-              f"{pros_string}" \
-              f"\n```"
+    pros_string = ", ".join([f"`{pro}`" for pro in pros_arr])
+    message = f"{len(pros_arr)} **{arg.upper()}** pros:\n{pros_string}"
     await ctx.send(message[:3000])
 
 
@@ -359,7 +356,9 @@ async def fetch_active_qms(stats_json):
             else:
                 stats = stats_json[ladder_abbrev]
                 in_queue = stats['queuedPlayers']
-                pros_in_queue = stats['queuedPros']
+                pros_only_in_queue = stats['queuedProsOnly']
+                pros_any_in_queue = stats['queuedProsAny']
+                total_pros = pros_only_in_queue + pros_any_in_queue
 
                 total_in_qm = in_queue + (len(qms_arr) * 2)  # players in queue + players in a match
 
@@ -377,8 +376,9 @@ async def fetch_active_qms(stats_json):
                             total_in_qm = in_queue + (len(qms_arr) * 4)
 
                             current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \
-                                              f" - **{str(max(0, in_queue - pros_in_queue))}** non-pros in queue\n" \
-                                              f" - **{str(pros_in_queue)}** pros in queue"
+                                              f" - **{str(max(0, in_queue - total_pros))}** non-pros," \
+                                              f" **{str(total_pros)}** pros in queue," \
+                                              f" **{str(pros_only_in_queue)}** pros want pro only"
                         else:
                             current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \
                                               f" - **{str(in_queue)}** players in queue"
