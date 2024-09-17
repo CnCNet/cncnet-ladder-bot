@@ -32,14 +32,12 @@ BURG_ID = 123726717067067393
 # Discord server IDs
 BLITZ_DISCORD_ID = 818265922615377971
 YR_DISCORD_ID = 252268956033875970  # Yuri's Revenge - Server ID
-GIBI_DISCORD_ID = 1007684612291579904  # Gibi server ID (polye's discord)
 
 CNCNET_LADDER_DISCORD_BOT_LOGS_ID = 1240364999931854999
 
 # Discord Channel IDs
 YR_DISCORD_QM_BOT_ID = 1039026321826787338  # Yuri's Revenge.ladder-bot
 CNCNET_DISCORD_QM_BOT_ID = 1039608594057924609  # CnCNet.qm-bot
-GIBI_BOT_CHANNEL_ID = 1224207197173715064  # GIBI ladder-bot channel id
 BLITZ_DISCORD_QM_BOT_ID = 1040396984164548729  # RA2 World Series.qm-bot
 
 
@@ -50,7 +48,7 @@ async def on_ready():
     logger = MyLogger()
     logger.log("bot online")
 
-    # guild = discord.utils.get(bot.guilds, id=GIBI_DISCORD_ID)
+    # guild = discord.utils.get(bot.guilds, id=1007684612291579904)
     # if guild:
     #     print(f'Leaving server: {guild.name} (ID: {guild.id})')
     #     await guild.leave()
@@ -70,7 +68,7 @@ async def on_ready():
     ladders_string = ", ".join(ladders)
     logger.log(f"Ladders found: ({ladders_string})")
 
-    await purge_bot_channel(0)  # Delete messages in bot-channel
+    await purge_bot_channel(1)  # Delete messages in bot-channel
     minute_task.start()
     update_qm_roles.start()
 
@@ -206,9 +204,6 @@ async def update_qm_bot_channel_name_task(stats_json):
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
             ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-2v2"]
             qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
-        elif server.id == GIBI_DISCORD_ID:  # GIBI discord
-            ladder_abbrev_arr = ["blitz-2v2", "blitz",  "ra2", "yr", "ra2-2v2"]
-            qm_bot_channel = bot.get_channel(GIBI_BOT_CHANNEL_ID)
 
         if not ladder_abbrev_arr:
             logger.log(f"No ladders defined for server '{server.name}'")
@@ -326,9 +321,6 @@ async def fetch_active_qms(stats_json):
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
             ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-2v2"]
             qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
-        elif server.id == GIBI_DISCORD_ID:  # GIBI discord
-            ladder_abbrev_arr = ["blitz-2v2", "blitz", "ra2", "yr", "ra2-2v2"]
-            qm_bot_channel = bot.get_channel(GIBI_BOT_CHANNEL_ID)
 
         if not qm_bot_channel:
             continue
@@ -376,20 +368,21 @@ async def fetch_active_qms(stats_json):
                             total_in_qm = in_queue + (len(qms_arr) * 4)
 
                             current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \
-                                              f" - **{str(max(0, in_queue - total_pros))}** non-pros," \
-                                              f" **{str(total_pros)}** pros in queue," \
-                                              f" **{str(pros_only_in_queue)}** pros want pro only"
+                                              f"  - **{str(max(0, in_queue - total_pros))}** non-pros," \
+                                              f" **{str(total_pros)}** pros in queue"
+                            if total_pros > 0:
+                                current_message += f", **{str(pros_only_in_queue)}** of **{str(total_pros)}** pros want pros only"
                         else:
                             current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \
-                                              f" - **{str(in_queue)}** players in queue"
+                                              f"  - **{str(in_queue)}** players in queue"
 
                 if qms_arr:
                     qms_arr_joined = '\n- '.join(qms_arr)
-                    current_message += f"\n - **{str(len(qms_arr))}** active matches:\n" \
+                    current_message += f"\n  - **{str(len(qms_arr))}** active matches:\n" \
                                        f"```- {qms_arr_joined}```" \
                                        f"\n"
                 elif total_in_qm > 0:
-                    current_message += "\n - **0** active matches.\n"
+                    current_message += "\n  - **0** active matches.\n"
 
                 server_message += current_message
 
@@ -447,7 +440,7 @@ async def purge_bot_channel(keep_messages: int):  # keep up to 'keep_messages' m
                         if message_count > keep_messages:
                             deleted = await channel.purge()
                             logger.debug(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
-                            return
+                            continue
                 except DiscordServerError or discord.errors.NotFound or Exception as e:
                     await send_message_to_log_channel(f"Failed to delete message from server '{server.name}', {str(e)}")
 
