@@ -97,39 +97,6 @@ async def minute_task():
 
 
 @bot.command()
-async def pros(ctx, arg=""):
-    logger.debug("Fetching pros for ladder '{arg}'")
-
-    if not ladders:
-        await ctx.send("Error: No ladders available")
-        return
-
-    if not arg:
-        ladders_string = ', '.join(ladders)
-        await ctx.send(f"No ladder provided, select a valid ladder from `[{ladders_string}]`, like `!pros blitz-2v2`")
-        return
-
-    if arg.lower() not in ladders:
-        ladders_string = ', '.join(ladders)
-        await ctx.send(f"{arg.lower()} is not a valid ladder from `{ladders_string}`")
-        return
-
-    pros_arr = cnc_api_client.fetch_pros(arg.lower())
-
-    if is_error(pros_arr):
-        await ctx.send(f"Error fetching pros for ladder {arg.lower()}")
-        await send_message_to_log_channel(get_exception_msg(pros_arr))
-
-    if not pros:
-        await ctx.send(f"Error: No pros found in ladder': {arg.upper()}'")
-        return
-
-    pros_string = ", ".join([f"`{pro}`" for pro in pros_arr])
-    message = f"{len(pros_arr)} **{arg.upper()}** pros:\n{pros_string}"
-    await ctx.send(message[:3000])
-
-
-@bot.command()
 async def maps(ctx, arg=""):
     logger.debug("Fetching maps for ladder '{arg}'")
 
@@ -348,9 +315,6 @@ async def fetch_active_qms(stats_json):
             else:
                 stats = stats_json[ladder_abbrev]
                 in_queue = stats['queuedPlayers']
-                pros_only_in_queue = stats['queuedProsOnly']
-                pros_any_in_queue = stats['queuedProsAny']
-                total_pros = pros_only_in_queue + pros_any_in_queue
 
                 total_in_qm = in_queue + (len(qms_arr) * 2)  # players in queue + players in a match
 
@@ -368,10 +332,7 @@ async def fetch_active_qms(stats_json):
                             total_in_qm = in_queue + (len(qms_arr) * 4)
 
                             current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \
-                                              f"  - **{str(max(0, in_queue - total_pros))}** non-pros," \
-                                              f" **{str(total_pros)}** pros in queue"
-                            if total_pros > 0:
-                                current_message += f", **{str(pros_only_in_queue)}** of **{str(total_pros)}** pros want pros only"
+                                              f"  - **{str(in_queue)}**in queue"
                         else:
                             current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \
                                               f"  - **{str(in_queue)}** players in queue"
