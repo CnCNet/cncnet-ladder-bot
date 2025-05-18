@@ -143,13 +143,13 @@ async def update_qm_bot_channel_name_task(stats_json):
 
         if server.id == CNCNET_DISCORD_ID:  # CnCNet discord
             ladder_abbrev_arr = ["d2k", "ra", "ra-2v2", "ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2"]
-            qm_bot_channel = bot.get_channel(DISCORDS.CNCNET_DISCORD_ID['qm_bot_channel_id'])
+            qm_bot_channel = bot.get_channel(DISCORDS[CNCNET_DISCORD_ID]['qm_bot_channel_id'])
         elif server.id == YR_DISCORD_ID:  # YR discord
             ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2"]
-            qm_bot_channel = bot.get_channel(DISCORDS.YR_DISCORD_ID['qm_bot_channel_id'])
+            qm_bot_channel = bot.get_channel(DISCORDS[YR_DISCORD_ID]['qm_bot_channel_id'])
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
             ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-2v2"]
-            qm_bot_channel = bot.get_channel(DISCORDS.BLITZ_DISCORD_ID['qm_bot_channel_id'])
+            qm_bot_channel = bot.get_channel(DISCORDS[BLITZ_DISCORD_ID]['qm_bot_channel_id'])
 
         if not ladder_abbrev_arr:
             logger.log(f"No ladders defined for server '{server.name}'")
