@@ -6,4 +6,4 @@ COPY . /app
 
 RUN pip install -r requirements.txt
 
-CMD ["python", "src/bot/bot.py"]
+CMD ["python", "-m", "src.bot.bot"]
