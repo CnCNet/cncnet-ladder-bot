@@ -244,8 +244,6 @@ async def update_qm_roles():
 
     logger.debug("Starting update_qm_roles")
 
-    await purge_bot_channel(1)  # purge excess messages from bot channel periodically in case a message wasn't deleted
-
     await remove_qm_roles()  # remove discord members QM roles
 
     await assign_qm_role()  # assign discord members QM roles
