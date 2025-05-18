@@ -22,7 +22,7 @@ def players_in_queue(ladder_abbrev: str, stats_json: json):
     total_in_qm = in_queue + (stats_json['activeMatches'] * 2)  # players in queue + players in a match
 
     if total_in_qm == 0:
-        msg = f"- **0** players in **{title}** Ladder"
+        msg = f"- **0** in **{title}** Ladder"
     else:
         if '2v2' in ladder_abbrev:
             total_in_qm = in_queue + (stats_json['activeMatches'] * 4)

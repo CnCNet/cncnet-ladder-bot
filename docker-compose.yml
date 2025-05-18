@@ -4,4 +4,6 @@ services:
             dockerfile: Dockerfile
             context: .
         container_name: cncnet-ladder-bot
+        volumes:
+          - .:/app
         restart: always
