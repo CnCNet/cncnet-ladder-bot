@@ -47,7 +47,6 @@ async def on_ready():
     ladders_string = ", ".join(ladders)
     logger.log(f"Ladders found: ({ladders_string})")
 
-    await purge_bot_channel(1)  # Delete messages in bot-channel
     minute_task.start()
     update_qm_roles.start()
 
