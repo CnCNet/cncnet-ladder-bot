@@ -1,11 +1,9 @@
 import os
 
-from apiclient import JsonResponseHandler
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from src.commands.GetActiveMatches import fetch_active_qms
-from src.svc.CnCNetApiSvc import CnCNetApiSvc
+from src.util.Constants import DEV_DISCORD_ID, BLITZ_DISCORD_ID, CNCNET_DISCORD_ID, YR_DISCORD_ID
 from src.util.Embed import *
 
 # Load environment variables
@@ -62,11 +60,20 @@ async def on_ready():
     #         embeds=[embed]
     #     )
 
-    cnc_api_client = CnCNetApiSvc(
-        response_handler=JsonResponseHandler
-    )
+    print("Checking existing guilds...")
+    for guild in bot.guilds:
+        if guild.id != YR_DISCORD_ID and guild.id != CNCNET_DISCORD_ID and guild.id != BLITZ_DISCORD_ID and guild.id != DEV_DISCORD_ID:
+            print(f"Leaving unauthorized server on startup: {guild.name} (ID: {guild.id})")
+            await guild.leave()
+        else:
+            print(f"Remaining in authorized server: {guild.name} (ID: {guild.id})")
+    print("Finished checking guilds.")
 
-    stats_json = cnc_api_client.fetch_stats("all")
-    await fetch_active_qms(bot=bot, stats_json=stats_json, cnc_api_client=cnc_api_client)
+    # cnc_api_client = CnCNetApiSvc(
+    #     response_handler=JsonResponseHandler
+    # )
+    #
+    # stats_json = cnc_api_client.fetch_stats("all")
+    # await fetch_active_qms(bot=bot, stats_json=stats_json, cnc_api_client=cnc_api_client)
 
 bot.run(TOKEN)

@@ -27,6 +27,15 @@ async def on_ready():
 
     logger.log("bot online")
 
+    logger.log("Checking existing guilds...")
+    for guild in bot.guilds:
+        if guild.id != YR_DISCORD_ID and guild.id != CNCNET_DISCORD_ID and guild.id != BLITZ_DISCORD_ID and guild.id != DEV_DISCORD_ID:
+            logger.log(f"Leaving unauthorized server on startup: {guild.name} (ID: {guild.id})")
+            await guild.leave()
+        else:
+            logger.log(f"Remaining in authorized server: {guild.name} (ID: {guild.id})")
+    logger.log("Finished checking guilds.")
+
     # guild = discord.utils.get(bot.guilds, id=1007684612291579904)
     # if guild:
     #     print(f'Leaving server: {guild.name} (ID: {guild.id})')
