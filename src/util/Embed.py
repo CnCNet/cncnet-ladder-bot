@@ -72,8 +72,8 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
     match = match_data
 
     embed = discord.Embed(
-        title=f"{match['ladderName']}",
-        description=f"**{match['mapName']}**\n*{match['gameDuration']}*",
+        title=f"{match['mapName']}",
+        description=f"{match['gameDuration']}",
         color=game_color.get(ladder_abbrev.lower(), discord.Color.light_gray())
     )
 

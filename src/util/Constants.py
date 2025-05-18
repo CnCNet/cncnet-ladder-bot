@@ -8,11 +8,6 @@ DEV_DISCORD_ID = 1089195585984286860
 
 # discords where this bot resides
 DISCORDS = {
-    BLITZ_DISCORD_ID:
-        {
-            "qm_bot_channel_id": 1040396984164548729,  # channel where messages are sent
-            "ladders": ["blitz", "blitz-2v2", "ra2", "yr", "ra2-2v2"]  # list of which ladders data will be retrieved
-        },
     YR_DISCORD_ID:
         {
             "qm_bot_channel_id": 1039026321826787338,
