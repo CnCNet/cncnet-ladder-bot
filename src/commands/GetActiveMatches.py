@@ -10,7 +10,7 @@ from http.client import HTTPException
 logger = MyLogger("GetActiveMatches")
 
 
-def players_in_queue(ladder_abbrev: str, stats_json: json):
+def players_in_queue(ladder_abbrev: str, stats_json: json, num_active_matches: int):
     title = ladder_abbrev.upper()
     if ladder_abbrev == 'ra2-cl':
         title = 'RA2 Clan'
@@ -19,13 +19,13 @@ def players_in_queue(ladder_abbrev: str, stats_json: json):
 
     in_queue = stats_json['queuedPlayers']
 
-    total_in_qm = in_queue + (stats_json['activeMatches'] * 2)  # players in queue + players in a match
+    total_in_qm = in_queue + (num_active_matches * 2)  # players in queue + players in a match
 
     if total_in_qm == 0:
         msg = f"- **0** in **{title}** Ladder"
     else:
         if '2v2' in ladder_abbrev:
-            total_in_qm = in_queue + (stats_json['activeMatches'] * 4)
+            total_in_qm = in_queue + (num_active_matches * 4)
             msg = f"- **{str(total_in_qm)}** in **{title}** Ladder, **{str(in_queue)}** waiting in queue"
         else:
             msg = f"- **{str(total_in_qm)}** in **{title}** Ladder, **{str(in_queue)}** waiting in queue"
@@ -35,11 +35,11 @@ def players_in_queue(ladder_abbrev: str, stats_json: json):
 async def fetch_active_qms(bot: Bot, stats_json: json, cnc_api_client: CnCNetApiSvc):
     logger.debug("Fetching active qms")
 
-    current_matches_json: json = cnc_api_client.active_matches("all")
+    current_matches_json: json = cnc_api_client.active_matches(ladder="all")
 
     if is_error(current_matches_json):
         fail_msg = f"Error fetching current_matches'.\n{get_exception_msg(current_matches_json)}"
-        await send_message_to_log_channel(bot, f"{fail_msg}")
+        await send_message_to_log_channel(bot=bot, msg=f"{fail_msg}")
         return
 
     guilds = bot.guilds
@@ -69,10 +69,10 @@ async def fetch_active_qms(bot: Bot, stats_json: json, cnc_api_client: CnCNetApi
             embeds: list = []
             if ladder_abbrev not in stats_json:
                 send_msg = f"Ladder not found in stats, {ladder_abbrev}."
-                await send_message_to_log_channel(f"{send_msg}")
+                await send_message_to_log_channel(bot=bot, msg=f"{send_msg}")
                 message_text = f"Failed fetching ladder stats for {ladder_abbrev}"
             else:
-                message_text = players_in_queue(ladder_abbrev, stats_json[ladder_abbrev])
+                message_text = players_in_queue(ladder_abbrev=ladder_abbrev, stats_json=stats_json[ladder_abbrev], num_active_matches=len(current_matches_json[ladder_abbrev]))
                 if stats_json[ladder_abbrev]['activeMatches'] > 0:
                     embeds = create_embeds(ladder_abbrev=ladder_abbrev, match_data=current_matches_json[ladder_abbrev])
 
@@ -83,22 +83,21 @@ async def fetch_active_qms(bot: Bot, stats_json: json, cnc_api_client: CnCNetApi
                 if count >= len(channel_messages):
                     await qm_bot_channel.send(content=message_text[:2000], embeds=embeds)
                 else:
-                    await channel_messages[count].edit(content=message_text[:2000],
-                                                       embeds=embeds)  # edit the existing msg
+                    await channel_messages[count].edit(content=message_text[:2000], embeds=embeds)  # edit the existing msg
             except HTTPException as he:
                 msg = f"Failed to send message '{message_text[:2000]}' to '{server}'\nexception: '{he}'"
                 logger.error(msg)
-                await send_message_to_log_channel(bot, msg)
+                await send_message_to_log_channel(bot=bot, msg=msg)
                 return
             except Forbidden as f:
                 msg = f"Failed to send message '{message_text[:2000]}' \nforbidden error:  to '{server}' exception: '{f}'"
                 logger.error(msg)
-                await send_message_to_log_channel(bot, msg)
+                await send_message_to_log_channel(bot=bot, msg=msg)
                 return
             except DiscordServerError as de:
                 msg = f"Failed to send message '{message_text[:2000]}'\nDiscordServerError: to '{server}' exception: '{de}'"
                 logger.error(msg)
-                await send_message_to_log_channel(bot, msg)
+                await send_message_to_log_channel(bot=bot, msg=msg)
                 return
 
             count += 1
