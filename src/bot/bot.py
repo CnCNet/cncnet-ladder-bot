@@ -1,21 +1,17 @@
 # bot.py
 import os
-import time
-from http.client import HTTPException
-from io import StringIO
 
-import discord
 from apiclient import JsonResponseHandler
-from apiclient.exceptions import APIRequestError
-from discord import Forbidden, DiscordServerError
+from discord import DiscordServerError
+from discord.ext import commands
 from discord.ext import tasks
 from discord.utils import get
 from dotenv import load_dotenv
-from discord.ext import commands
-from CnCNetApiSvc import CnCNetApiSvc
 
-from MyLogger import MyLogger
-
+from src.commands.GetActiveMatches import fetch_active_qms
+from src.svc.CnCNetApiSvc import CnCNetApiSvc
+from src.util.MyLogger import MyLogger
+from src.util.Utils import *
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_CLIENT_SECRET')
@@ -23,29 +19,12 @@ intents = discord.Intents(messages=True, guilds=True, message_content=True, guil
 bot = commands.Bot(command_prefix='!', intents=intents)
 global cnc_api_client
 global ladders
-global logger
-
-QM_BOT_CHANNEL_NAME = "ladder-bot"
-
-BURG_ID = 123726717067067393
-
-# Discord server IDs
-BLITZ_DISCORD_ID = 818265922615377971
-YR_DISCORD_ID = 252268956033875970  # Yuri's Revenge - Server ID
-
-CNCNET_LADDER_DISCORD_BOT_LOGS_ID = 1240364999931854999
-
-# Discord Channel IDs
-YR_DISCORD_QM_BOT_ID = 1039026321826787338  # Yuri's Revenge.ladder-bot
-CNCNET_DISCORD_QM_BOT_ID = 1039608594057924609  # CnCNet.qm-bot
-BLITZ_DISCORD_QM_BOT_ID = 1040396984164548729  # RA2 World Series.qm-bot
+logger = MyLogger("bot")
 
 
 @bot.event
 async def on_ready():
 
-    global logger
-    logger = MyLogger()
     logger.log("bot online")
 
     # guild = discord.utils.get(bot.guilds, id=1007684612291579904)
@@ -85,15 +64,15 @@ async def minute_task():
         stats_json = cnc_api_client.fetch_stats("all")
         if is_error(stats_json):
             server_message = f"Error fetching stats for '/stats/all'.\n{get_exception_msg(stats_json)}"
-            await send_message_to_log_channel(f"{server_message}")
+            await send_message_to_log_channel(bot=bot, msg=f"{server_message}")
             return
 
-        await fetch_active_qms(stats_json)
+        await fetch_active_qms(bot=bot, stats_json=stats_json, cnc_api_client=cnc_api_client)
         await update_qm_bot_channel_name_task(stats_json)
     except DiscordServerError or Exception or KeyError as e:
         logger.error(f"Cause: '{e.__cause__}'")
         logger.error(str(e))
-        await send_message_to_log_channel(str(e))
+        await send_message_to_log_channel(bot, str(e))
 
 
 @bot.command()
@@ -118,7 +97,7 @@ async def maps(ctx, arg=""):
 
     if is_error(maps_json):
         await ctx.send(f"Error fetching maps for ladder {arg.lower()}")
-        await send_message_to_log_channel(get_exception_msg(maps_json))
+        await send_message_to_log_channel(bot=bot, msg=get_exception_msg(maps_json))
 
     maps_arr = []
     for item in maps_json:
@@ -162,15 +141,15 @@ async def update_qm_bot_channel_name_task(stats_json):
         ladder_abbrev_arr = None
         qm_bot_channel = None
 
-        if server.id == 188156159620939776:  # CnCNet discord
+        if server.id == CNCNET_DISCORD_ID:  # CnCNet discord
             ladder_abbrev_arr = ["d2k", "ra", "ra-2v2", "ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2"]
-            qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
+            qm_bot_channel = bot.get_channel(DISCORDS.CNCNET_DISCORD_ID['qm_bot_channel_id'])
         elif server.id == YR_DISCORD_ID:  # YR discord
             ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2"]
-            qm_bot_channel = bot.get_channel(YR_DISCORD_QM_BOT_ID)
+            qm_bot_channel = bot.get_channel(DISCORDS.YR_DISCORD_ID['qm_bot_channel_id'])
         elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
             ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-2v2"]
-            qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
+            qm_bot_channel = bot.get_channel(DISCORDS.BLITZ_DISCORD_ID['qm_bot_channel_id'])
 
         if not ladder_abbrev_arr:
             logger.log(f"No ladders defined for server '{server.name}'")
@@ -185,7 +164,7 @@ async def update_qm_bot_channel_name_task(stats_json):
             stats = stats_json[ladder_abbrev]
             if not stats:
                 logger.error(f"Error: No stats available for ladder {ladder_abbrev}")
-                await send_message_to_log_channel(f"update_qm_bot_channel_name_task - Error: No stats available for ladder {ladder_abbrev}")
+                await send_message_to_log_channel(bot=bot, msg=f"update_qm_bot_channel_name_task - Error: No stats available for ladder {ladder_abbrev}")
                 continue
 
             queued_players = stats['queuedPlayers']
@@ -214,170 +193,13 @@ async def update_qm_bot_channel_name_task(stats_json):
             await qm_bot_channel.edit(name=new_channel_name)
         except DiscordServerError or discord.errors.HTTPException as e:
             logger.error("failed to update channel name")
-            await send_message_to_log_channel(str(e))
-
-
-# Send error message to channel on discord for bot logs
-async def send_message_to_log_channel(msg):
-    channel = bot.get_channel(CNCNET_LADDER_DISCORD_BOT_LOGS_ID)
-
-    if len(msg) > 3000:
-        buffer = StringIO(msg)
-        f = discord.File(buffer, filename=f"error.txt")
-        await channel.send(f"Error", file=f)
-    else:
-        await channel.send(msg[:3000])
-
-
-def clans_in_queue_msg(clans_in_queue):
-    msg = ""
-
-    if clans_in_queue:
-        clan_count = 1
-        msg += " "
-
-        for clan_id, num_clans in clans_in_queue.items():
-            msg += "Clan" + str(clan_count) + " (" + str(num_clans) + " players)"
-            clan_count += 1
-
-            if clan_count < len(clans_in_queue) + 1:
-                msg += ", "
-            else:
-                msg += "."
-
-    return msg
-
-
-def is_error(obj):
-    return isinstance(obj, Exception) or isinstance(obj, APIRequestError)
-
-
-def get_exception_msg(e):
-    return f"Status code: '{e.status_code}', message: '{e.message}', Info: '{e.info}', Cause: '{e.__cause__}'"
-
-
-async def get_latest_msg(channel):
-    async for message in channel.history(limit=1):
-        return message
-
-    return None
-
-
-async def fetch_active_qms(stats_json):
-
-    logger.debug("Fetching active qms")
-
-    current_matches_json = cnc_api_client.fetch_current_matches("all")
-
-    if is_error(current_matches_json):
-        fail_msg = f"Error fetching current_matches'.\n{get_exception_msg(current_matches_json)}"
-        await send_message_to_log_channel(f"{fail_msg}")
-        return
-
-    guilds = bot.guilds
-    for server in guilds:
-
-        ladder_abbrev_arr = []
-        qm_bot_channel = None
-        if server.id == 188156159620939776:  # CnCNet discord
-            ladder_abbrev_arr = ["d2k", "ra", "ra-2v2", "ra2", "ra2-2v2", "yr",  "blitz", "blitz-2v2"]
-            qm_bot_channel = bot.get_channel(CNCNET_DISCORD_QM_BOT_ID)
-        elif server.id == YR_DISCORD_ID:  # YR discord
-            ladder_abbrev_arr = ["ra2", "yr", "blitz", "blitz-2v2", "ra2-2v2"]
-            qm_bot_channel = bot.get_channel(YR_DISCORD_QM_BOT_ID)
-        elif server.id == BLITZ_DISCORD_ID:  # RA2CashGames discord
-            ladder_abbrev_arr = ["blitz", "blitz-2v2", "ra2", "yr", "ra2-2v2"]
-            qm_bot_channel = bot.get_channel(BLITZ_DISCORD_QM_BOT_ID)
-
-        if not qm_bot_channel:
-            continue
-
-        server_message = ""
-        # Loop through each ladder and get the results
-        # Display active games in all ladders
-        for ladder_abbrev in ladder_abbrev_arr:
-
-            title = ladder_abbrev.upper()
-            if ladder_abbrev == 'ra2-cl':
-                title = 'RA2 Clan'
-
-            qms_arr = []
-            if ladder_abbrev in current_matches_json:
-                for game in current_matches_json[ladder_abbrev]:
-                    qms_arr.append(game.strip())
-
-            # Get players in queue
-            if ladder_abbrev not in stats_json:
-                send_msg = f"Ladder not found in stats, {ladder_abbrev}."
-                await send_message_to_log_channel(f"{send_msg}")
-                server_message = f"Failed fetching ladder stats for {ladder_abbrev}"
-                continue
-            else:
-                stats = stats_json[ladder_abbrev]
-                in_queue = stats['queuedPlayers']
-
-                total_in_qm = in_queue + (len(qms_arr) * 2)  # players in queue + players in a match
-
-                if total_in_qm == 0:
-                    current_message = f"- **0** players in **{title}** Ladder\n"
-                else:
-                    if '-cl' in ladder_abbrev:
-                        clans_in_queue = stats['clans']
-                        total_in_qm = in_queue + (len(qms_arr) * 4)
-                        current_message = f"- **{str(total_in_qm)}** in ** {title}** Ladder:\n" \
-                                          f" - **{str(in_queue)}**" \
-                                          + " clan(s) in queue." + clans_in_queue_msg(clans_in_queue)
-                    else:
-                        if '2v2' in ladder_abbrev:
-                            total_in_qm = in_queue + (len(qms_arr) * 4)
-
-                            current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \
-                                              f"  - **{str(in_queue)}**in queue"
-                        else:
-                            current_message = f"- **{str(total_in_qm)}** in **{title}** Ladder:\n" \
-                                              f"  - **{str(in_queue)}** players in queue"
-
-                if qms_arr:
-                    qms_arr_joined = '\n- '.join(qms_arr)
-                    current_message += f"\n  - **{str(len(qms_arr))}** active matches:\n" \
-                                       f"```- {qms_arr_joined}```" \
-                                       f"\n"
-                elif total_in_qm > 0:
-                    current_message += "\n  - **0** active matches.\n"
-
-                server_message += current_message
-
-        server_message += f"\n*Updated* <t:{int(time.time())}:R>"
-
-        if server_message:  # Send one message per server
-            try:
-                msg = await get_latest_msg(qm_bot_channel)
-                if not msg:
-                    await qm_bot_channel.send(server_message[:2000])  # No msg found, so send a new msg
-                else:
-                    await msg.edit(content=server_message[:2000])  # edit the existing msg
-            except HTTPException as he:
-                msg = f"Failed to send message '{server_message}' to '{server}'\nexception: '{he}'"
-                logger.error(msg)
-                await send_message_to_log_channel(msg)
-                return
-            except Forbidden as f:
-                msg = f"Failed to send message '{server_message}' \nforbidden error:  to '{server}' exception: '{f}'"
-                logger.error(msg)
-                await send_message_to_log_channel(msg)
-                return
-            except DiscordServerError as de:
-                msg = f"Failed to send message '{server_message}'\nDiscordServerError: to '{server}' exception: '{de}'"
-                logger.error(msg)
-                await send_message_to_log_channel(msg)
-                return
-    logger.debug("completed fetching active matches")
+            await send_message_to_log_channel(bot=bot, msg=str(e))
 
 
 @bot.event
 async def on_rate_limit(rate_limit_info):
     logger.warning("WARNING - We are being rate limited")
-    await send_message_to_log_channel(rate_limit_info)
+    await send_message_to_log_channel(bot=bot, msg=rate_limit_info)
 
 
 @bot.command()
@@ -403,7 +225,7 @@ async def purge_bot_channel(keep_messages: int):  # keep up to 'keep_messages' m
                             logger.debug(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
                             continue
                 except DiscordServerError or discord.errors.NotFound or Exception as e:
-                    await send_message_to_log_channel(f"Failed to delete message from server '{server.name}', {str(e)}")
+                    await send_message_to_log_channel(bot=bot, msg=f"Failed to delete message from server '{server.name}', {str(e)}")
 
 
 def is_in_bot_channel(ctx):

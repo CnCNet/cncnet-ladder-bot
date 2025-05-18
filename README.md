@@ -6,6 +6,7 @@ CnCNet QM Discord Bot, in python
 - Create file named `.env` in `src` directory
 - Add discord application id `DISCORD_CLIENT_SECRET=[token]`
 - Run `docker-compose build` and `docker-compose up`
+- Can test locally from project root with: `python -m src.adhoc.main`
 ---
 #### Pip Installs:
 ```commandline

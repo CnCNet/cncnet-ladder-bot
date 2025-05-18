@@ -2,8 +2,8 @@ import logging
 
 
 class MyLogger:
-    def __init__(self, debug_log_filename='debug.log', info_log_filename='info.log'):
-        self.logger = logging.getLogger('my_logger')
+    def __init__(self, name, debug_log_filename='debug.log', info_log_filename='info.log'):
+        self.logger = logging.getLogger(name)
         self.logger.setLevel(logging.DEBUG)  # Set the logger to the lowest level to capture all messages
 
         # Create handlers
