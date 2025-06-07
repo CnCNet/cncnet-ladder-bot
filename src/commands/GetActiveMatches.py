@@ -85,20 +85,20 @@ async def fetch_active_qms(bot: Bot, stats_json: json, cnc_api_client: CnCNetApi
                 else:
                     await channel_messages[count].edit(content=message_text[:2000], embeds=embeds)  # edit the existing msg
             except HTTPException as he:
-                msg = f"Failed to send message '{message_text[:2000]}' to '{server}'\nexception: '{he}'"
+                msg = f"Failed to send message to channel '{server.name}.{qm_bot_channel.name}', msg: '{message_text[:2000]}' to '{server}'\n**Exception:** '{he}'"
                 logger.error(msg)
                 await send_message_to_log_channel(bot=bot, msg=msg)
-                return
+                continue
             except Forbidden as f:
-                msg = f"Failed to send message '{message_text[:2000]}' \nforbidden error:  to '{server}' exception: '{f}'"
+                msg = f"Failed to send message to channel '{server.name}.{qm_bot_channel.name}', msg: '{message_text[:2000]}' \n**Forbidden error:** '{f}'"
                 logger.error(msg)
                 await send_message_to_log_channel(bot=bot, msg=msg)
-                return
+                continue
             except DiscordServerError as de:
-                msg = f"Failed to send message '{message_text[:2000]}'\nDiscordServerError: to '{server}' exception: '{de}'"
+                msg = f"Failed to send message to channel '{server.name}.{qm_bot_channel.name}', msg: '{message_text[:2000]}'\n**DiscordServerError:** '{de}'"
                 logger.error(msg)
                 await send_message_to_log_channel(bot=bot, msg=msg)
-                return
+                continue
 
             count += 1
 
