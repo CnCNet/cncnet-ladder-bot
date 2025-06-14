@@ -63,6 +63,8 @@ async def on_ready():
 @tasks.loop(seconds=45)
 async def minute_task():
 
+    logger.debug("Starting minute_task()...")
+
     try:
         if not ladders:
             logger.error("Error: No ladders available")

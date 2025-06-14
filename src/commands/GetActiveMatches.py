@@ -33,7 +33,7 @@ def players_in_queue(ladder_abbrev: str, stats_json: json, num_active_matches: i
 
 
 async def fetch_active_qms(bot: Bot, stats_json: json, cnc_api_client: CnCNetApiSvc):
-    logger.debug("Fetching active qms")
+    logger.debug("Fetching active qms...")
 
     current_matches_json: json = cnc_api_client.active_matches(ladder="all")
 
