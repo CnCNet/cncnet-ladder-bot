@@ -3,7 +3,7 @@ import os
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from src.util.Constants import DEV_DISCORD_ID, BLITZ_DISCORD_ID, CNCNET_DISCORD_ID, YR_DISCORD_ID
+from src.constants.Constants import DEV_DISCORD_ID, BLITZ_DISCORD_ID, CNCNET_DISCORD_ID, YR_DISCORD_ID
 from src.util.Embed import *
 
 # Load environment variables

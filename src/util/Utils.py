@@ -1,7 +1,7 @@
 from apiclient.exceptions import APIRequestError
 from discord.ext.commands import Bot
 
-from src.util.Constants import *
+from src.constants.Constants import *
 from io import StringIO
 import discord
 

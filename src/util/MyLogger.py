@@ -1,26 +1,29 @@
+from logging.handlers import RotatingFileHandler
 import logging
 
 
 class MyLogger:
+    MAX_LOG_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+    BACKUP_COUNT = 3
+
     def __init__(self, name, debug_log_filename='logs/debug.log', info_log_filename='logs/info.log'):
         self.logger = logging.getLogger(name)
-        self.logger.setLevel(logging.DEBUG)  # Set the logger to the lowest level to capture all messages
+        self.logger.setLevel(logging.DEBUG)
 
-        # Create handlers
-        debug_handler = logging.FileHandler(debug_log_filename)
+        # Rotating debug handler
+        debug_handler = RotatingFileHandler(debug_log_filename, maxBytes=self.MAX_LOG_FILE_SIZE, backupCount=self.BACKUP_COUNT)
         debug_handler.setLevel(logging.DEBUG)
 
-        info_handler = logging.FileHandler(info_log_filename)
+        # Rotating info handler
+        info_handler = RotatingFileHandler(info_log_filename, maxBytes=self.MAX_LOG_FILE_SIZE, backupCount=self.BACKUP_COUNT)
         info_handler.setLevel(logging.INFO)
 
-        # Create formatter
+        # Formatter
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-
-        # Add formatter to handlers
         debug_handler.setFormatter(formatter)
         info_handler.setFormatter(formatter)
 
-        # Add handlers to the logger
+        # Attach handlers
         self.logger.addHandler(debug_handler)
         self.logger.addHandler(info_handler)
 

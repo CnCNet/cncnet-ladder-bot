@@ -32,77 +32,80 @@ def players_in_queue(ladder_abbrev: str, stats_json: json, num_active_matches: i
     return msg
 
 
-async def fetch_active_qms(bot: Bot, stats_json: json, cnc_api_client: CnCNetApiSvc):
-    logger.debug("Fetching active qms...")
+async def fetch_active_qms(bot: Bot, stats_json: json, cnc_api_client: CnCNetApiSvc, debug: bool):
+    logger.debug(f"Fetching active qms with debug={debug}...")
 
-    current_matches_json: json = cnc_api_client.active_matches(ladder="all")
+    current_matches_json = cnc_api_client.active_matches(ladder="all")
 
     if is_error(current_matches_json):
-        fail_msg = f"Error fetching current_matches'.\n{get_exception_msg(current_matches_json)}"
-        await send_message_to_log_channel(bot=bot, msg=f"{fail_msg}")
+        fail_msg = f"Error fetching current_matches.\n{get_exception_msg(current_matches_json)}"
+        await send_message_to_log_channel(bot=bot, msg=fail_msg)
         return
 
-    guilds = bot.guilds
-    for server in guilds:
-
-        if server.id == DEV_DISCORD_ID:  # skip dev discord
+    for server in bot.guilds:
+        if (server.id == DEV_DISCORD_ID) != debug:
             continue
 
-        # grab which ladders to fetch for this discord server
-        server_info: dict = DISCORDS.get(server.id)
+        server_info = DISCORDS.get(server.id)
         if server_info is None:
             logger.error(f"Unexpected server ID: {server.id}")
             continue
 
-        ladder_abbrev_arr: list = server_info['ladders']
-        qm_bot_channel = bot.get_channel(server_info['qm_bot_channel_id'])
+        ladder_abbrev_arr = server_info["ladders"]
+        qm_bot_channel = bot.get_channel(server_info["qm_bot_channel_id"])
 
         if not qm_bot_channel:
-            raise ValueError(f"Unable to find channel for {server.name}, channel {server_info['qm_bot_channel_id']}")
+            raise ValueError(f"Channel not found for {server.name}: {server_info['qm_bot_channel_id']}")
 
-        # Loop through each ladder and get the results
-        # Display active games in all ladders
         count = 0
         channel_messages = await get_channel_msgs(channel=qm_bot_channel, limit=10)
+
         for ladder_abbrev in ladder_abbrev_arr:
-
-            embeds: list = []
             if ladder_abbrev not in stats_json:
-                send_msg = f"Ladder not found in stats, {ladder_abbrev}."
-                await send_message_to_log_channel(bot=bot, msg=f"{send_msg}")
+                await send_message_to_log_channel(bot=bot, msg=f"Ladder not found: {ladder_abbrev}")
                 message_text = f"Failed fetching ladder stats for {ladder_abbrev}"
+                embeds = []
             else:
-                message_text = players_in_queue(ladder_abbrev=ladder_abbrev, stats_json=stats_json[ladder_abbrev], num_active_matches=len(current_matches_json[ladder_abbrev]))
-                if stats_json[ladder_abbrev]['activeMatches'] > 0:
-                    embeds = create_embeds(ladder_abbrev=ladder_abbrev, match_data=current_matches_json[ladder_abbrev])
-
-            if count == 0:
-                message_text = f"*Updated* <t:{int(time.time())}:R>" + f"\n\n{message_text}"
+                message_text = players_in_queue(
+                    ladder_abbrev=ladder_abbrev,
+                    stats_json=stats_json[ladder_abbrev],
+                    num_active_matches=len(current_matches_json[ladder_abbrev])
+                )
+                embeds = create_embeds(ladder_abbrev, current_matches_json[ladder_abbrev])
 
             try:
                 if count >= len(channel_messages):
                     await qm_bot_channel.send(content=message_text[:2000], embeds=embeds)
                 else:
-                    await channel_messages[count].edit(content=message_text[:2000], embeds=embeds)  # edit the existing msg
-            except HTTPException as he:
-                msg = f"Failed to send message to channel '{server.name}.{qm_bot_channel.name}', msg: '{message_text[:2000]}' to '{server}'\n**Exception:** '{he}'"
+                    await channel_messages[count].edit(content=message_text[:2000], embeds=embeds)
+                count += 1
+            except (HTTPException, Forbidden, DiscordServerError, Exception) as e:
+                msg = (
+                    f"Failed to send/edit message in '{server.name}.{qm_bot_channel.name}' "
+                    f"(ladder: {ladder_abbrev})\nMessage: '{message_text[:2000]}'\n**{type(e).__name__}:** {e}"
+                )
                 logger.error(msg)
                 await send_message_to_log_channel(bot=bot, msg=msg)
-                continue
-            except Forbidden as f:
-                msg = f"Failed to send message to channel '{server.name}.{qm_bot_channel.name}', msg: '{message_text[:2000]}' \n**Forbidden error:** '{f}'"
-                logger.error(msg)
-                await send_message_to_log_channel(bot=bot, msg=msg)
-                continue
-            except DiscordServerError as de:
-                msg = f"Failed to send message to channel '{server.name}.{qm_bot_channel.name}', msg: '{message_text[:2000]}'\n**DiscordServerError:** '{de}'"
-                logger.error(msg)
-                await send_message_to_log_channel(bot=bot, msg=msg)
-                continue
 
-            count += 1
+        # Update time as last message
+        time_updated_msg = f"*Updated* <t:{int(time.time())}:R>"
+        try:
+            if count >= len(channel_messages):
+                await qm_bot_channel.send(content=time_updated_msg)
+            else:
+                await channel_messages[count].edit(content=time_updated_msg)
+        except Exception as e:
+            logger.warning(f"Failed to send final update timestamp: {e}")
 
-    logger.debug("completed fetching active matches")
+        # Clean up any remaining old messages
+        for extra_msg in channel_messages[count + 1:]:
+            try:
+                await extra_msg.delete()
+                logger.debug(f"Deleted extra message: {extra_msg.id}")
+            except Exception as e:
+                logger.warning(f"Failed to delete extra message {extra_msg.id}: {e}")
+
+    logger.debug("Completed fetching active matches.")
 
 
 def clans_in_queue_msg(clans_in_queue):

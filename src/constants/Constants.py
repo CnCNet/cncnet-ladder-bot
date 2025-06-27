@@ -18,10 +18,11 @@ DISCORDS = {
             "qm_bot_channel_id": 1039608594057924609,
             "ladders": ["d2k", "ra", "ra-2v2", "ra2", "ra2-2v2", "yr", "blitz", "blitz-2v2"]
         },
-    DEV_DISCORD_ID: {
-        "qm_bot_channel_id": 1373149510372560987,
-        "ladders": ["ra2", "yr", "blitz-2v2"]
-    }
+    DEV_DISCORD_ID:
+        {
+            "qm_bot_channel_id": 1373149510372560987,
+            "ladders": ["ra2", "yr", "blitz", "blitz-2v2"]
+        }
 }
 
 QM_BOT_CHANNEL_NAME = "ladder-bot"
