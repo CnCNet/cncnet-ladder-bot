@@ -11,21 +11,29 @@ class MyLogger:
         self.logger.setLevel(logging.DEBUG)
 
         # Rotating debug handler
-        debug_handler = RotatingFileHandler(debug_log_filename, maxBytes=self.MAX_LOG_FILE_SIZE, backupCount=self.BACKUP_COUNT)
+        debug_handler = RotatingFileHandler(debug_log_filename, maxBytes=self.MAX_LOG_FILE_SIZE,
+                                            backupCount=self.BACKUP_COUNT)
         debug_handler.setLevel(logging.DEBUG)
 
         # Rotating info handler
-        info_handler = RotatingFileHandler(info_log_filename, maxBytes=self.MAX_LOG_FILE_SIZE, backupCount=self.BACKUP_COUNT)
+        info_handler = RotatingFileHandler(info_log_filename, maxBytes=self.MAX_LOG_FILE_SIZE,
+                                           backupCount=self.BACKUP_COUNT)
         info_handler.setLevel(logging.INFO)
+
+        # Console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.DEBUG)
 
         # Formatter
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         debug_handler.setFormatter(formatter)
         info_handler.setFormatter(formatter)
+        console_handler.setFormatter(formatter)
 
         # Attach handlers
         self.logger.addHandler(debug_handler)
         self.logger.addHandler(info_handler)
+        self.logger.addHandler(console_handler)
 
     def log(self, message):
         self.logger.info(message)
