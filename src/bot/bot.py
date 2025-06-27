@@ -26,6 +26,7 @@ logger = MyLogger("bot")
 async def on_ready():
 
     logger.log("bot online")
+    await send_message_to_log_channel(bot, "Ladder bot is online...")
 
     logger.log("Checking existing guilds...")
     for guild in bot.guilds:
@@ -64,25 +65,30 @@ async def on_ready():
 async def minute_task():
 
     logger.debug("Starting minute_task()...")
+    global error_count
 
     try:
         if not ladders:
             logger.error("Error: No ladders available")
-            await send_message_to_log_channel("update_qm_bot_channel_name_task - Error: No ladders available")
+            await send_message_to_log_channel(bot=bot, msg="update_qm_bot_channel_name_task - Error: No ladders available")
             return
 
         stats_json = cnc_api_client.fetch_stats("all")
         if is_error(stats_json):
             server_message = f"Error fetching stats for '/stats/all'.\n{get_exception_msg(stats_json)}"
             await send_message_to_log_channel(bot=bot, msg=f"{server_message}")
+            error_count += 1
+            if error_count >= 10:
+                await send_message_to_log_channel(bot=bot, msg=f"<@{BURG_ID}> stats API has failed {error_count} times in a row!")
             return
+        else:
+            error_count = 0
 
         await fetch_active_qms(bot=bot, stats_json=stats_json, cnc_api_client=cnc_api_client)
         await update_qm_bot_channel_name_task(stats_json)
-    except DiscordServerError or Exception or KeyError as e:
-        logger.error(f"Cause: '{e.__cause__}'")
-        logger.error(str(e))
-        await send_message_to_log_channel(bot, str(e))
+    except (DiscordServerError, KeyError, Exception) as e:
+        logger.exception("Exception occurred in minute_task()")
+        await send_message_to_log_channel(bot=bot, msg=str(e))
 
 
 @bot.command()
@@ -125,6 +131,7 @@ async def maps(ctx, arg=""):
     await ctx.send(message[:3000])
 
 
+error_count = 0
 count = 10
 total_count = 0
 RECENT_ACTIVE_PLAYERS = []

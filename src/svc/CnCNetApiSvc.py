@@ -13,10 +13,6 @@ class CnCNetApiSvc(APIClient):
         url = f"{self.host}/api/v1/qm/ladder/{ladder}/stats"
         return self.get_call(url)
 
-    def fetch_stats_tier(self, ladder, tier):
-        url = f"{self.host}/api/v1/qm/ladder/{ladder}/stats/{tier}"
-        return self.get_call(url)
-
     def fetch_ladders(self):
         url = f"{self.host}/api/v1/ladder"
         return self.get_call(url)
