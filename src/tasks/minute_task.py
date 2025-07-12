@@ -1,12 +1,10 @@
-import os
-
 import discord
 from discord import DiscordServerError
 
-from src.util.MyLogger import MyLogger
 from src.commands.GetActiveMatches import fetch_active_qms
-from src.svc.CnCNetApiSvc import CnCNetApiSvc
 from src.constants.Constants import BURG_ID, CNCNET_DISCORD_ID, DISCORDS, YR_DISCORD_ID
+from src.svc.CnCNetApiSvc import CnCNetApiSvc
+from src.util.MyLogger import MyLogger
 from src.util.Utils import send_message_to_log_channel, get_exception_msg, is_error
 
 error_count = 0
@@ -40,16 +38,17 @@ async def execute(bot, ladders: list, cnc_api_client: CnCNetApiSvc, debug):
         else:
             error_count = 0
 
-        await fetch_active_qms(bot=bot, stats_json=stats_json, cnc_api_client=cnc_api_client, debug=debug)
+        current_matches_json = cnc_api_client.active_matches(ladder="all")
+        await fetch_active_qms(bot=bot, stats_json=stats_json, current_matches_json=current_matches_json, debug=debug)
 
         if not debug:
-            await update_qm_bot_channel_name_task(bot=bot, stats_json=stats_json)
+            await update_qm_bot_channel_name_task(bot=bot, stats_json=stats_json, current_matches=current_matches_json)
     except (DiscordServerError, KeyError, Exception) as e:
         logger.exception("Exception occurred in minute_task()")
         await send_message_to_log_channel(bot=bot, msg=str(e))
 
 
-async def update_qm_bot_channel_name_task(bot, stats_json):
+async def update_qm_bot_channel_name_task(bot, stats_json, current_matches):
     logger.debug("beginning update_qm_bot_channel_name_task()")
 
     global count
@@ -94,7 +93,7 @@ async def update_qm_bot_channel_name_task(bot, stats_json):
                 continue
 
             queued_players = stats['queuedPlayers']
-            active_matches_players = stats['activeMatches']
+            active_matches_players = len(current_matches[ladder_abbrev])
 
             if ladder_abbrev in "2v2" or ladder_abbrev in "cl":
                 active_matches_players = active_matches_players * 4  # 4 players in a 2v2

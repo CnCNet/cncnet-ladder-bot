@@ -1,11 +1,12 @@
-from src.svc.CnCNetApiSvc import CnCNetApiSvc
-from src.util.MyLogger import MyLogger
 import json
-from src.util.Utils import *
-from src.util.Embed import *
-from discord import Forbidden, DiscordServerError
 import time
 from http.client import HTTPException
+
+from discord import Forbidden, DiscordServerError
+
+from src.util.Embed import *
+from src.util.MyLogger import MyLogger
+from src.util.Utils import *
 
 logger = MyLogger("GetActiveMatches")
 
@@ -32,10 +33,8 @@ def players_in_queue(ladder_abbrev: str, stats_json: json, num_active_matches: i
     return msg
 
 
-async def fetch_active_qms(bot: Bot, stats_json: json, cnc_api_client: CnCNetApiSvc, debug: bool):
+async def fetch_active_qms(bot: Bot, stats_json: json, current_matches_json, debug: bool):
     logger.debug(f"Fetching active qms with debug={debug}...")
-
-    current_matches_json = cnc_api_client.active_matches(ladder="all")
 
     if is_error(current_matches_json):
         fail_msg = f"Error fetching current_matches.\n{get_exception_msg(current_matches_json)}"
