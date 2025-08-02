@@ -83,6 +83,7 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
     teams = {}
     for player in match['players']:
         team_id = player['teamId']
+
         if team_id not in teams:
             teams[team_id] = []
         teams[team_id].append(player)
@@ -94,8 +95,14 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
             player_color = get_player_color_from_index(player['playerColor']).lower()
             color_emoji = player_color_to_emoji.get(player_color, "")  # fallback if color missing
             player_list += f"{color_emoji} {player['playerName']} ({player['playerFaction']})\n"
+
+        if not team_id:
+            name = "Observer"
+        else:
+            name = f"Team {team_id}"
+
         embed.add_field(
-            name=f"Team {team_id}",
+            name=name,
             value=player_list,
             inline=False
         )

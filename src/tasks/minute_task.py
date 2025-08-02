@@ -31,7 +31,7 @@ async def execute(bot, ladders: list, cnc_api_client: CnCNetApiSvc, debug):
             await send_message_to_log_channel(bot=bot, msg=f"{server_message}")
             error_count += 1
             logger.debug(f"error_count={error_count}")
-            if error_count >= 10:
+            if error_count == 10:
                 await send_message_to_log_channel(bot=bot,
                                                   msg=f"<@{BURG_ID}> stats API has failed {error_count} times in a row!")
             return
