@@ -72,8 +72,8 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
     match = match_data
 
     embed = discord.Embed(
-        title=f"{match['mapName']}",
-        description=f"{match['gameDuration']}",
+        title=ladder_abbrev.upper(),  # Ladder name as title
+        description=f"{match['mapName']}\n{match['gameDuration']}",  # Map name and duration on separate lines
         color=game_color.get(ladder_abbrev.lower(), discord.Color.light_gray())
     )
 
@@ -114,8 +114,8 @@ def create_1v1_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Embe
     match = match_data
 
     embed = discord.Embed(
-        title=f"{match['mapName']}",
-        description=f"{match['gameDuration']}",
+        title=ladder_abbrev.upper(),  # Ladder name as title
+        description=f"{match['mapName']}\n{match['gameDuration']}",  # Map name and duration on separate lines
         color=game_color.get(ladder_abbrev.lower(), discord.Color.light_gray())
     )
 

@@ -1,39 +1,48 @@
+
+
 import json
 import time
 from http.client import HTTPException
+from typing import Dict, Any, List, Optional
 
-from discord import Forbidden, DiscordServerError
-
-from src.util.Embed import *
+from discord import Forbidden, DiscordServerError, Message
+from discord.ext.commands import Bot
+from src.constants.Constants import DEV_DISCORD_ID, DISCORDS
+from src.util.Embed import create_embeds
 from src.util.MyLogger import MyLogger
-from src.util.Utils import *
+from src.util.Utils import send_message_to_log_channel, get_channel_msgs, is_error, get_exception_msg
 
-logger = MyLogger("GetActiveMatches")
+logger = MyLogger("GetActiveMatches")  # Logger for this module
 
 
-def players_in_queue(ladder_abbrev: str, stats_json: json, num_active_matches: int):
+def players_in_queue(ladder_abbrev: str, stats_json: dict, num_active_matches: int) -> str:
+    """
+    Returns a formatted message about the number of players in queue and in matches for a given ladder.
+    """
     title = ladder_abbrev.upper()
     if ladder_abbrev == 'ra2-cl':
         title = 'RA2 Clan'
 
-    # Get players in queue
-
-    in_queue = stats_json['queuedPlayers']
-
-    total_in_qm = in_queue + (num_active_matches * 2)  # players in queue + players in a match
+    in_queue = stats_json.get('queuedPlayers', 0)
+    total_in_qm = in_queue + (num_active_matches * (4 if '2v2' in ladder_abbrev else 2))
 
     if total_in_qm == 0:
-        msg = f"- **0** in **{title}** Ladder"
-    else:
-        if '2v2' in ladder_abbrev:
-            total_in_qm = in_queue + (num_active_matches * 4)
-            msg = f"- **{str(total_in_qm)}** in **{title}** Ladder, **{str(in_queue)}** waiting in queue"
-        else:
-            msg = f"- **{str(total_in_qm)}** in **{title}** Ladder, **{str(in_queue)}** waiting in queue"
-    return msg
+        return f"- **0** in **{title}** Ladder"
+    return f"- **{total_in_qm}** in **{title}** Ladder, **{in_queue}** waiting in queue"
 
 
-async def fetch_active_qms(bot: Bot, stats_json: json, current_matches_json, debug: bool):
+last_summary_message_ids: Dict[int, int] = {}  # channel_id -> message_id
+
+async def fetch_active_qms(
+    bot: Bot,
+    stats_json: dict,
+    current_matches_json: dict,
+    debug: bool
+) -> None:
+    """
+    Updates Discord channel messages with current queue and match info for each ladder.
+    Aggregates all ladder info into a single message and updates it in the target channel.
+    """
     logger.debug(f"Fetching active qms with debug={debug}...")
 
     if is_error(current_matches_json):
@@ -50,77 +59,54 @@ async def fetch_active_qms(bot: Bot, stats_json: json, current_matches_json, deb
             logger.error(f"Unexpected server ID: {server.id}")
             continue
 
-        ladder_abbrev_arr = server_info["ladders"]
+        ladder_abbrev_arr: List[str] = server_info["ladders"]
         qm_bot_channel = bot.get_channel(server_info["qm_bot_channel_id"])
 
         if not qm_bot_channel:
-            raise ValueError(f"Channel not found for {server.name}: {server_info['qm_bot_channel_id']}")
+            logger.error(f"Channel not found for {server.name}: {server_info['qm_bot_channel_id']}")
+            continue
 
-        count = 0
-        channel_messages = await get_channel_msgs(channel=qm_bot_channel, limit=10)
-
+        # Aggregate all ladder info into one message
+        summary_lines: List[str] = []
+        all_embeds: List = []
         for ladder_abbrev in ladder_abbrev_arr:
             if ladder_abbrev not in stats_json:
-                await send_message_to_log_channel(bot=bot, msg=f"Ladder not found: {ladder_abbrev}")
-                message_text = f"Failed fetching ladder stats for {ladder_abbrev}"
-                embeds = []
+                summary_lines.append(f"Failed fetching ladder stats for {ladder_abbrev}")
             else:
-                message_text = players_in_queue(
+                msg = players_in_queue(
                     ladder_abbrev=ladder_abbrev,
                     stats_json=stats_json[ladder_abbrev],
-                    num_active_matches=len(current_matches_json[ladder_abbrev])
+                    num_active_matches=len(current_matches_json.get(ladder_abbrev, []))
                 )
-                embeds = create_embeds(ladder_abbrev, current_matches_json[ladder_abbrev])
+                summary_lines.append(msg)
+                all_embeds.extend(create_embeds(ladder_abbrev, current_matches_json.get(ladder_abbrev, [])))
 
-            try:
-                if count >= len(channel_messages):
-                    await qm_bot_channel.send(content=message_text[:2000], embeds=embeds)
-                else:
-                    await channel_messages[count].edit(content=message_text[:2000], embeds=embeds)
-                count += 1
-            except (HTTPException, Forbidden, DiscordServerError, Exception) as e:
-                msg = (
-                    f"Failed to send/edit message in '{server.name}.{qm_bot_channel.name}' "
-                    f"(ladder: {ladder_abbrev})\nMessage: '{message_text[:2000]}'\n**{type(e).__name__}:** {e}"
-                )
-                logger.error(msg)
-                await send_message_to_log_channel(bot=bot, msg=msg)
-
-        # Update time as last message
         time_updated_msg = f"*Updated* <t:{int(time.time())}:R>"
-        try:
-            if count >= len(channel_messages):
-                await qm_bot_channel.send(content=time_updated_msg)
-            else:
-                await channel_messages[count].edit(content=time_updated_msg)
-        except Exception as e:
-            logger.warning(f"Failed to send final update timestamp: {e}")
+        summary_text = "\n".join(summary_lines) + "\n" + time_updated_msg
 
-        # Clean up any remaining old messages
-        for extra_msg in channel_messages[count + 1:]:
+        # Use cached message ID if available
+        bot_message: Optional[Message] = None
+        channel_id = qm_bot_channel.id
+        message_id = last_summary_message_ids.get(channel_id)
+        if message_id:
             try:
-                await extra_msg.delete()
-                logger.debug(f"Deleted extra message: {extra_msg.id}")
-            except Exception as e:
-                logger.warning(f"Failed to delete extra message {extra_msg.id}: {e}")
+                bot_message = await qm_bot_channel.fetch_message(message_id)
+            except Exception:
+                bot_message = None  # Message may have been deleted
+
+        try:
+            if bot_message:
+                await bot_message.edit(content=summary_text[:2000], embeds=all_embeds)
+            else:
+                sent_msg = await qm_bot_channel.send(content=summary_text[:2000], embeds=all_embeds)
+                last_summary_message_ids[channel_id] = sent_msg.id
+        except (HTTPException, Forbidden, DiscordServerError) as e:
+            error_msg = (
+                f"Failed to send/edit summary message in '{server.name}.{qm_bot_channel.name}'\n"
+                f"**{type(e).__name__}:** {e}"
+            )
+            logger.error(error_msg)
+            await send_message_to_log_channel(bot=bot, msg=error_msg)
 
     logger.debug("Completed fetching active matches.")
 
-
-def clans_in_queue_msg(clans_in_queue):
-    msg = ""
-
-    if clans_in_queue:
-        clan_count = 1
-        msg += " "
-
-        for clan_id, num_clans in clans_in_queue.items():
-            msg += "Clan" + str(clan_count) + " (" + str(num_clans) + " players)"
-            clan_count += 1
-
-            if clan_count < len(clans_in_queue) + 1:
-                msg += ", "
-            else:
-                msg += "."
-
-    return msg

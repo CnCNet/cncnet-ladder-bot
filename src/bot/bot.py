@@ -8,13 +8,14 @@ from dotenv import load_dotenv
 
 from src.commands.GetMaps import get_maps
 from src.svc.CnCNetApiSvc import CnCNetApiSvc
-from src.tasks import minute_task, eight_hour_task
+from src.tasks import update_channel_bot_task, eight_hour_task
+from src.tasks.update_qm_bot_channel_name_task import update_qm_bot_channel_name_task
 from src.util.MyLogger import MyLogger
 from src.util.Utils import *
 
 load_dotenv()
-TOKEN = os.getenv('DISCORD_CLIENT_SECRET')
-DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+TOKEN: str = str(os.getenv('DISCORD_CLIENT_SECRET'))
+DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 intents = discord.Intents(messages=True, guilds=True, message_content=True, guild_messages=True, members=True)
 bot = commands.Bot(command_prefix='!', intents=intents)
 global cnc_api_client
@@ -57,15 +58,27 @@ async def on_ready():
     ladders_string = ", ".join(ladders)
     logger.log(f"Ladders found: ({ladders_string})")
 
-    minute_task_loop.start()
+    update_bot_channel.start()
+    
+    # periodic_update_qm_bot_channel_name.start()
 
-    if not DEBUG:
-        update_qm_roles_loop.start()
+
+@tasks.loop(hours=8)
+async def periodic_update_qm_bot_channel_name():
+
+    # Skip the first execution after bot comes online
+    if not hasattr(periodic_update_qm_bot_channel_name, "_has_run"):
+        periodic_update_qm_bot_channel_name._has_run = True
+        return
+    
+    stats_json = cnc_api_client.fetch_stats("all")
+    current_matches_json = cnc_api_client.active_matches(ladder="all")
+    await update_qm_bot_channel_name_task(bot, stats_json, current_matches_json)
 
 
-@tasks.loop(seconds=45)
-async def minute_task_loop():
-    await minute_task.execute(bot=bot, ladders=ladders, cnc_api_client=cnc_api_client, debug=DEBUG)
+@tasks.loop(seconds=35)
+async def update_bot_channel():
+    await update_channel_bot_task.execute(bot=bot, ladders=ladders, cnc_api_client=cnc_api_client, debug=DEBUG)
 
 
 @bot.command()
