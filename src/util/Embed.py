@@ -94,10 +94,23 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
         for player in players:
             player_color = get_player_color_from_index(player['playerColor']).lower()
             color_emoji = player_color_to_emoji.get(player_color, "")  # fallback if color missing
-            player_list += f"{color_emoji} {player['playerName']} ({player['playerFaction']})\n"
+            faction = player['playerFaction']
 
-        if not team_id:
-            name = "Observer"
+            twitch_profile = player.get('twitchProfile')
+            if twitch_profile:
+                twitch_url = f"https://www.twitch.tv/{twitch_profile}"
+                faction = "Observer"
+                break
+            
+            player_list += f"{color_emoji} {player['playerName']} ({faction})\n"
+
+        if not team_id or team_id.lower() == "observer":
+            twitch_url = None
+
+            if twitch_url:
+                name = f"[Observer: {twitch_profile}]({twitch_url})"
+            else:
+                name = "Observer"
         else:
             name = f"Team {team_id}"
 

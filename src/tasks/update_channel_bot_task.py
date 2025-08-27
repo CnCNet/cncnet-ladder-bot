@@ -34,12 +34,19 @@ async def execute(bot, ladders: list, cnc_api_client: CnCNetApiSvc, debug):
             if error_count == 10:
                 await send_message_to_log_channel(bot=bot,
                                                   msg=f"<@{BURG_ID}> stats API has failed {error_count} times in a row!")
+            # Update bot channel message with error
+            await fetch_active_qms(
+                bot=bot,
+                stats_json={},
+                active_matches_json={},
+                debug=debug
+            )
             return
         else:
             error_count = 0
 
-        current_matches_json = cnc_api_client.active_matches(ladder="all")
-        await fetch_active_qms(bot=bot, stats_json=stats_json, current_matches_json=current_matches_json, debug=debug)
+        active_matches_json = cnc_api_client.active_matches(ladder="all")
+        await fetch_active_qms(bot=bot, stats_json=stats_json, active_matches_json=active_matches_json, debug=debug)
 
     except (DiscordServerError, KeyError, Exception) as e:
         logger.exception("Exception occurred in update_channel_bot_task()")

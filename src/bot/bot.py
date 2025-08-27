@@ -72,11 +72,11 @@ async def periodic_update_qm_bot_channel_name():
         return
     
     stats_json = cnc_api_client.fetch_stats("all")
-    current_matches_json = cnc_api_client.active_matches(ladder="all")
-    await update_qm_bot_channel_name_task(bot, stats_json, current_matches_json)
+    active_matches_json = cnc_api_client.active_matches(ladder="all")
+    await update_qm_bot_channel_name_task(bot, stats_json, active_matches_json)
 
 
-@tasks.loop(seconds=35)
+@tasks.loop(seconds=30)
 async def update_bot_channel():
     await update_channel_bot_task.execute(bot=bot, ladders=ladders, cnc_api_client=cnc_api_client, debug=DEBUG)
 

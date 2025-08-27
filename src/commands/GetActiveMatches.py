@@ -36,7 +36,7 @@ last_summary_message_ids: Dict[int, int] = {}  # channel_id -> message_id
 async def fetch_active_qms(
     bot: Bot,
     stats_json: dict,
-    current_matches_json: dict,
+    active_matches_json: dict,
     debug: bool
 ) -> None:
     """
@@ -45,8 +45,8 @@ async def fetch_active_qms(
     """
     logger.debug(f"Fetching active qms with debug={debug}...")
 
-    if is_error(current_matches_json):
-        fail_msg = f"Error fetching current_matches.\n{get_exception_msg(current_matches_json)}"
+    if is_error(active_matches_json):
+        fail_msg = f"Error fetching active_matches.\n{get_exception_msg(active_matches_json)}"
         await send_message_to_log_channel(bot=bot, msg=fail_msg)
         return
 
@@ -71,15 +71,16 @@ async def fetch_active_qms(
         all_embeds: List = []
         for ladder_abbrev in ladder_abbrev_arr:
             if ladder_abbrev not in stats_json:
-                summary_lines.append(f"Failed fetching ladder stats for {ladder_abbrev}")
+                summary_lines = ["Failed to retrieve ladder stats from the API."]
+                break
             else:
                 msg = players_in_queue(
                     ladder_abbrev=ladder_abbrev,
                     stats_json=stats_json[ladder_abbrev],
-                    num_active_matches=len(current_matches_json.get(ladder_abbrev, []))
+                    num_active_matches=len(active_matches_json.get(ladder_abbrev, []))
                 )
                 summary_lines.append(msg)
-                all_embeds.extend(create_embeds(ladder_abbrev, current_matches_json.get(ladder_abbrev, [])))
+                all_embeds.extend(create_embeds(ladder_abbrev, active_matches_json.get(ladder_abbrev, [])))
 
         time_updated_msg = f"*Updated* <t:{int(time.time())}:R>"
         summary_text = "\n".join(summary_lines) + "\n" + time_updated_msg

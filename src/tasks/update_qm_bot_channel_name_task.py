@@ -9,7 +9,7 @@ logger = MyLogger("update_qm_bot_channel_name_task")
 count = 0
 total_count = 0
 
-async def update_qm_bot_channel_name_task(bot, stats_json, current_matches):
+async def update_qm_bot_channel_name_task(bot, stats_json, active_matches):
     logger.debug("beginning update_qm_bot_channel_name_task()")
     global count
     global total_count
@@ -45,7 +45,7 @@ async def update_qm_bot_channel_name_task(bot, stats_json, current_matches):
                                                   msg=f"update_qm_bot_channel_name_task - Error: No stats available for ladder {ladder_abbrev}")
                 continue
             queued_players = stats.get('queuedPlayers', 0)
-            active_matches_players = len(current_matches.get(ladder_abbrev, []))
+            active_matches_players = len(active_matches.get(ladder_abbrev, []))
             if "2v2" in ladder_abbrev or "cl" in ladder_abbrev:
                 active_matches_players = active_matches_players * 4
             else:
@@ -66,5 +66,5 @@ async def update_qm_bot_channel_name_task(bot, stats_json, current_matches):
 async def periodic_update_qm_bot_channel_name(bot, cnc_api_client):
     while True:
         stats_json = cnc_api_client.fetch_stats("all")
-        current_matches_json = cnc_api_client.active_matches(ladder="all")
-        await update_qm_bot_channel_name_task(bot, stats_json, current_matches_json)
+        active_matches_json = cnc_api_client.active_matches(ladder="all")
+        await update_qm_bot_channel_name_task(bot, stats_json, active_matches_json)
