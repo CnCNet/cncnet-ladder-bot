@@ -43,6 +43,8 @@ async def on_ready():
     #     print(f'Leaving server: {guild.name} (ID: {guild.id})')
     #     await guild.leave()
 
+    await purge_bot_channel(0)
+
     global cnc_api_client
     cnc_api_client = CnCNetApiSvc(
         response_handler=JsonResponseHandler
@@ -92,30 +94,30 @@ async def on_rate_limit(rate_limit_info):
     await send_message_to_log_channel(bot=bot, msg=rate_limit_info)
 
 
-# @bot.command()
-# async def purge_bot_channel_command(ctx):
-#     if not ctx.message.author.guild_permissions.administrator:
-#         logger.error(f"{ctx.message.author} is not admin, exiting command.")
-#         return
-#     await purge_bot_channel(0)
+@bot.command()
+async def purge_bot_channel_command(ctx):
+    if not ctx.message.author.guild_permissions.administrator:
+        logger.error(f"{ctx.message.author} is not admin, exiting command.")
+        return
+    await purge_bot_channel(0)
 
 
-# async def purge_bot_channel(keep_messages: int):  # keep up to 'keep_messages' messages
-#     guilds = bot.guilds
-#
-#     for server in guilds:
-#         for channel in server.channels:
-#             if QM_BOT_CHANNEL_NAME in channel.name:
-#                 try:
-#                     message_count = 0
-#                     async for _ in channel.history(limit=2):
-#                         message_count += 1
-#                         if message_count > keep_messages:
-#                             deleted = await channel.purge()
-#                             logger.debug(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
-#                             continue
-#                 except DiscordServerError or discord.errors.NotFound or Exception as e:
-#                     await send_message_to_log_channel(bot=bot, msg=f"Failed to delete message from server '{server.name}', {str(e)}")
+async def purge_bot_channel(keep_messages_count: int):  # keep up to 'keep_messages' messages
+    guilds = bot.guilds
+
+    for server in guilds:
+        for channel in server.channels:
+            if QM_BOT_CHANNEL_NAME in channel.name:
+                try:
+                    message_count = 0
+                    async for _ in channel.history(limit=2):
+                        message_count += 1
+                        if message_count > keep_messages_count:
+                            deleted = await channel.purge()
+                            logger.debug(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
+                            continue
+                except (discord.DiscordServerError, discord.errors.HTTPException) as e:
+                    await send_message_to_log_channel(bot=bot, msg=f"Failed to delete message from server '{server.name}', {str(e)}")
 
 
 def is_in_bot_channel(ctx):

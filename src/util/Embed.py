@@ -97,20 +97,20 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
             faction = player['playerFaction']
 
             twitch_profile = player.get('twitchProfile')
-            if twitch_profile:
-                twitch_url = f"https://www.twitch.tv/{twitch_profile}"
-                faction = "Observer"
-                break
-            
-            player_list += f"{color_emoji} {player['playerName']} ({faction})\n"
-
-        if not team_id or team_id.lower() == "observer":
-            twitch_url = None
-
-            if twitch_url:
-                name = f"[Observer: {twitch_profile}]({twitch_url})"
+            if not team_id or team_id == "observer":
+                if twitch_profile:
+                    twitch_url = f"https://www.twitch.tv/{twitch_profile}"
+                if twitch_profile and twitch_url:
+                    player_details = f"{color_emoji} [{player['playerName']}]({twitch_url})\n"
+                else:
+                    player_details = f"{color_emoji} {player['playerName']}\n"
             else:
-                name = "Observer"
+                player_details = f"{color_emoji} {player['playerName']} ({faction})\n"
+        
+            player_list += player_details
+                
+        if not team_id or team_id.lower() == "observer":
+            name = "Observer"
         else:
             name = f"Team {team_id}"
 
