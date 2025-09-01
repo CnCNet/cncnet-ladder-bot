@@ -43,7 +43,7 @@ count = 0
 total_count = 0
 
 
-async def execute(bot, ladders: list, cnc_api_client: CnCNetApiSvc, debug):
+async def execute(bot, ladders: list, cnc_api_client: CnCNetApiSvc, debug) -> dict:
     logger.debug("Starting update_channel_bot_task()...")
     global error_count
 
@@ -52,23 +52,25 @@ async def execute(bot, ladders: list, cnc_api_client: CnCNetApiSvc, debug):
             logger.error("Error: No ladders available")
             msg = "Error: No ladders available"
             await send_message_to_log_channel(bot=bot, msg=msg)
-            return
+            return {"error": "Failed to fetch stats", "status": "failed"}
 
         stats_json = cnc_api_client.fetch_stats("all")
         if is_error(stats_json):
             error_count = await handle_api_error(bot, stats_json, "stats", error_count, debug)
-            return
+            return {"error": "Failed to fetch stats", "status": "failed"}
         else:
             error_count = 0
 
         active_matches_json = cnc_api_client.active_matches(ladder="all")
         if is_error(active_matches_json):
             error_count = await handle_api_error(bot, active_matches_json, "active matches", error_count, debug, stats_json=stats_json)
-            return
+            return {"error": "Failed to fetch stats"}
         await fetch_active_qms(bot=bot, stats_json=stats_json, active_matches_json=active_matches_json, debug=debug)
 
+        return {"error": None, "status": "success"}
     except (DiscordServerError, KeyError, Exception) as e:
         logger.exception("Exception occurred in update_channel_bot_task()")
         await send_message_to_log_channel(bot=bot, msg=str(e))
+        return {"error": f"Unexpected error: {str(e)}", "status": "failed"}
 
 

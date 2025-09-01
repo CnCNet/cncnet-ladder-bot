@@ -80,7 +80,14 @@ async def periodic_update_qm_bot_channel_name():
 
 @tasks.loop(seconds=30)
 async def update_bot_channel():
-    await update_channel_bot_task.execute(bot=bot, ladders=ladders, cnc_api_client=cnc_api_client, debug=DEBUG)
+    response = await update_channel_bot_task.execute(bot=bot, ladders=ladders, cnc_api_client=cnc_api_client, debug=DEBUG)
+    if response.get("error"):
+        logger.error(f"Error in update_bot_channel: {response['error']}")
+        update_bot_channel.change_interval(seconds=60)
+    else:
+        # Restore interval to 30 seconds if previously changed due to error
+        if update_bot_channel.seconds != 30:
+            update_bot_channel.change_interval(seconds=30)
 
 
 @bot.command()
