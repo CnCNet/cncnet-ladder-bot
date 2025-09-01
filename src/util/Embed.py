@@ -90,26 +90,30 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
 
     # Add a field for each team
     for team_id, players in teams.items():
+        print(f"Team {team_id}:")
+        print(str(players))
         player_list = ""
         for player in players:
             player_color = get_player_color_from_index(player['playerColor']).lower()
             color_emoji = player_color_to_emoji.get(player_color, "")  # fallback if color missing
             faction = player['playerFaction']
+            player_name = player['playerName']
 
             twitch_profile = player.get('twitchProfile')
-            if not team_id or team_id == "observer":
+            if not team_id or str(team_id) == "observer":
+                twitch_url = None
                 if twitch_profile:
                     twitch_url = f"https://www.twitch.tv/{twitch_profile}"
                 if twitch_profile and twitch_url:
-                    player_details = f"{color_emoji} [{player['playerName']}]({twitch_url})\n"
+                    player_details = f"{color_emoji} {player_name} - Watch at: [{twitch_profile}]({twitch_url})\n"
                 else:
-                    player_details = f"{color_emoji} {player['playerName']}\n"
+                    player_details = f"{color_emoji} {player_name}\n"
             else:
-                player_details = f"{color_emoji} {player['playerName']} ({faction})\n"
+                player_details = f"{color_emoji} {player_name} ({faction})\n"
         
             player_list += player_details
                 
-        if not team_id or team_id.lower() == "observer":
+        if not team_id or str(team_id).lower() == "observer":
             name = "Observer"
         else:
             name = f"Team {team_id}"

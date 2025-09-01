@@ -56,7 +56,7 @@ async def fetch_active_qms(
 
         server_info = DISCORDS.get(server.id)
         if server_info is None:
-            logger.error(f"Unexpected server ID: {server.id}")
+            logger.warn(f"Unexpected server ID: {server.id} (server name: {server.name}) ... skipping")
             continue
 
         ladder_abbrev_arr: List[str] = server_info["ladders"]
