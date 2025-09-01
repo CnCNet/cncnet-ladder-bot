@@ -62,10 +62,10 @@ async def on_ready():
 
     update_bot_channel.start()
     
-    # periodic_update_qm_bot_channel_name.start()
+    periodic_update_qm_bot_channel_name.start()
 
 
-@tasks.loop(hours=8)
+@tasks.loop(minutes=10)
 async def periodic_update_qm_bot_channel_name():
 
     # Skip the first execution after bot comes online
