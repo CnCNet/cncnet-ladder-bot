@@ -10,9 +10,7 @@ CnCNet QM Discord Bot, in python
 ---
 #### Pip Installs:
 ```commandline
-pip install discord.py
-pip install apiclient
-pip install -U python-dotenv
+pip install -R requirements.txt
 ```
 #### Bot Commands
 - `!maps {ladder}` return the current QM maps of a given ladder

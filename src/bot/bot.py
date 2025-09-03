@@ -1,7 +1,6 @@
 # bot.py
 import os
 
-from apiclient import JsonResponseHandler
 from discord.ext import commands
 from discord.ext import tasks
 from dotenv import load_dotenv
@@ -46,9 +45,7 @@ async def on_ready():
     await purge_bot_channel(0)
 
     global cnc_api_client
-    cnc_api_client = CnCNetApiSvc(
-        response_handler=JsonResponseHandler
-    )
+    cnc_api_client = CnCNetApiSvc()
 
     global ladders
     ladders = []
@@ -83,7 +80,7 @@ async def update_bot_channel():
     response = await update_channel_bot_task.execute(bot=bot, ladders=ladders, cnc_api_client=cnc_api_client, debug=DEBUG)
     if response.get("error"):
         logger.error(f"Error in update_bot_channel: {response['error']}")
-        update_bot_channel.change_interval(seconds=60)
+        update_bot_channel.change_interval(seconds=90)
     else:
         # Restore interval to 30 seconds if previously changed due to error
         if update_bot_channel.seconds != 30:
