@@ -61,6 +61,9 @@ async def on_ready():
     
     periodic_update_qm_bot_channel_name.start()
 
+    if not DEBUG:
+        update_qm_roles_loop.start()
+
 
 @tasks.loop(minutes=10)
 async def periodic_update_qm_bot_channel_name():
