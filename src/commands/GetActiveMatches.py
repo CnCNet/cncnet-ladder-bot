@@ -71,7 +71,9 @@ async def fetch_active_qms(
         all_embeds: List = []
         for ladder_abbrev in ladder_abbrev_arr:
             if ladder_abbrev not in stats_json:
-                summary_lines = ["Failed to retrieve ladder stats from the API."]
+                summary_lines = [
+                    "Active Ladder stats are temporarily unavailable. Alert admins if this persists."
+                ]
                 break
             else:
                 msg = players_in_queue(
