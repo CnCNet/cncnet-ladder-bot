@@ -25,11 +25,12 @@ async def send_message_to_log_channel(bot: Bot, msg: str, as_file: bool = False)
 
         if len(msg_with_time) > 2000 or as_file:
             buffer = StringIO(msg_with_time)
-            f = discord.File(buffer, filename="error.txt")
-            await channel.send(file=f)
+            filename = f"{unix_ts}_logfile.txt"
+            f = discord.File(buffer, filename=filename)
+            await channel.send(content=f"<t:{unix_ts}:T>", file=f)
         else:
             await channel.send(msg_with_time[:2000])
-    except (discord.errors.DiscordServerError, discord.errors.HTTPException) as e:
+    except Exception as e:
         logger.exception(f"Failed to send message to log channel: {e}")
 
 
