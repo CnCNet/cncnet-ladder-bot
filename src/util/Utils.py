@@ -24,7 +24,7 @@ async def send_message_to_log_channel(bot: Bot, msg: str, as_file: bool = False)
         msg_with_time = f"<t:{unix_ts}:T> {msg}"
 
         if len(msg_with_time) > 2000 or as_file:
-            buffer = StringIO(msg_with_time)
+            buffer = StringIO(msg)
             filename = f"{unix_ts}_logfile.txt"
             f = discord.File(buffer, filename=filename)
             await channel.send(content=f"<t:{unix_ts}:T>", file=f)
