@@ -33,6 +33,7 @@ def players_in_queue(ladder_abbrev: str, stats_json: dict, num_active_matches: i
 
 last_summary_message_ids: Dict[int, int] = {}  # channel_id -> message_id
 
+
 async def fetch_active_qms(
     bot: Bot,
     stats_json: dict,

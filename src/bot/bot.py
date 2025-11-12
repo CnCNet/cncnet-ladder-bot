@@ -95,6 +95,85 @@ async def maps(ctx, arg=""):
     await get_maps(ctx=ctx, bot=bot, arg=arg, ladders=ladders, cnc_api_client=cnc_api_client)
 
 
+@bot.command()
+async def candle(ctx, player: str = None, ladder: str = "blitz-2v2"):
+    """Check a player's daily wins and losses for a specific ladder."""
+    if not player:
+        await ctx.send("Usage: `!candle <player> [ladder]` (default: blitz-2v2)")
+        return
+
+    if ladder not in ladders:
+        await ctx.send(f"Invalid ladder '{ladder}'. Available ladders: {', '.join(ladders)}")
+        return
+
+    stats = cnc_api_client.fetch_player_daily_stats(ladder, player)
+
+    if isinstance(stats, Exception):
+        logger.error(f"Exception fetching daily stats for {player} on {ladder}: {type(stats).__name__}, {str(stats)}")
+        await ctx.send(f"Error: Could not fetch stats for {player}")
+        return
+
+    if "error" in stats:
+        logger.error(f"API error fetching daily stats for {player} on {ladder}: {stats.get('error')}")
+        await ctx.send(f"Error: Could not fetch stats for {player}")
+        return
+
+    wins = stats.get('wins', 0)
+    losses = stats.get('losses', 0)
+    total_games = wins + losses
+
+    # Build the candle visualization
+    message = f"**{player}** on **{ladder.upper()}** - Today's Candle:\n\n"
+
+    if total_games == 0:
+        message += "🕯️ No games played today"
+    else:
+        # Maximum candle height (excluding flame and stats)
+        max_candle_height = 15
+
+        # Calculate scaled blocks if needed
+        if total_games > max_candle_height:
+            # Scale down proportionally
+            scale_factor = max_candle_height / total_games
+            red_blocks = round(losses * scale_factor)
+            green_blocks = round(wins * scale_factor)
+
+            # Ensure at least 1 block if there are wins/losses
+            if losses > 0 and red_blocks == 0:
+                red_blocks = 1
+            if wins > 0 and green_blocks == 0:
+                green_blocks = 1
+
+            # Adjust if total exceeds max (due to rounding)
+            total_blocks = red_blocks + green_blocks
+            if total_blocks > max_candle_height:
+                if red_blocks > green_blocks:
+                    red_blocks -= 1
+                else:
+                    green_blocks -= 1
+
+        else:
+            red_blocks = losses
+            green_blocks = wins
+
+        # Add flame at top if there are games
+        message += "🔥\n"
+
+        # Add red blocks for losses (at the top)
+        for i in range(red_blocks):
+            message += "🟥\n"
+
+        # Add green blocks for wins (at the bottom)
+        for i in range(green_blocks):
+            message += "🟩\n"
+
+        # Add stats summary
+        win_rate = (wins / total_games * 100) if total_games > 0 else 0
+        message += f"\n📊 **{wins}W - {losses}L** ({win_rate:.1f}% WR)"
+
+    await ctx.send(message)
+
+
 @bot.event
 async def on_rate_limit(rate_limit_info):
     logger.warning(f"WARNING - We are being rate limited: {rate_limit_info}")
