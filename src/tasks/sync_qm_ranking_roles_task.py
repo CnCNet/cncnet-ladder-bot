@@ -6,14 +6,14 @@ from src.util.Utils import *
 from src.util.MyLogger import MyLogger
 from src.svc.CnCNetApiSvc import CnCNetApiSvc
 from src.constants.Constants import YR_DISCORD_ID
-from src.util.Utils import is_error, get_exception_msg
+from src.util.Utils import is_error, get_exception_msg, send_file_to_channel
 
-logger = MyLogger("EightHourTask")
+logger = MyLogger("SyncQMRankingRoles")
 
 
 # Patterns for QM roles to remove
 QM_ROLE_PATTERNS = [
-    "ra2 qm", "yr qm", "blitz-2v2 qm"
+    "ra2 qm", "yr qm", "blitz-2v2 qm", "ra2-2v2 qm"
 ]
 
 
@@ -82,7 +82,7 @@ async def assign_qm_role(bot, cnc_api_client: CnCNetApiSvc):
         if server.id != YR_DISCORD_ID:  # Only process YR discord
             continue
 
-        ladder_abbrev_arr = ["RA2", "YR", "BLITZ-2V2"]
+        ladder_abbrev_arr = ["RA2", "YR", "BLITZ-2V2", "RA2-2V2"]
         for ladder in ladder_abbrev_arr:
             rank = 0
             ladder_assignments = []  # Collect action messages for this ladder
@@ -139,6 +139,5 @@ async def assign_qm_role(bot, cnc_api_client: CnCNetApiSvc):
 
             # Send a summary of actions taken for this ladder to the log channel
             if ladder_assignments:
-                header = f"Ladder: {ladder}"
-                await send_message_to_log_channel(bot=bot, msg=header + "\n" + "\n".join(ladder_assignments), as_file=True)
+                await send_file_to_channel(bot=bot, filename=f"Ladder {ladder}: role updates log.txt", content="\n".join(ladder_assignments))
     logger.debug("Completed assigning QM Roles")

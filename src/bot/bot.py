@@ -6,10 +6,10 @@ from discord.ext import tasks
 from dotenv import load_dotenv
 
 from src.commands.GetMaps import get_maps
+from src.commands.CreateQmRoles import create_qm_roles as create_qm_roles_impl
 from src.svc.CnCNetApiSvc import CnCNetApiSvc
-from src.tasks import update_channel_bot_task, eight_hour_task
+from src.tasks import update_channel_bot_task, sync_qm_ranking_roles_task
 from src.tasks.update_qm_bot_channel_name_task import update_qm_bot_channel_name_task
-from src.util.MyLogger import MyLogger
 from src.util.Utils import *
 
 load_dotenv()
@@ -62,7 +62,7 @@ async def on_ready():
     periodic_update_qm_bot_channel_name.start()
 
     if not DEBUG:
-        update_qm_roles_loop.start()
+        sync_qm_ranking_roles_loop.start()
 
 
 @tasks.loop(minutes=10)
@@ -188,6 +188,11 @@ async def purge_bot_channel_command(ctx):
     await purge_bot_channel(0)
 
 
+@bot.command()
+async def create_qm_roles(ctx, ladder: str = None):
+    await create_qm_roles_impl(ctx=ctx, bot=bot, ladder=ladder)
+
+
 async def purge_bot_channel(keep_messages_count: int):  # keep up to 'keep_messages' messages
     guilds = bot.guilds
 
@@ -211,8 +216,8 @@ def is_in_bot_channel(ctx):
 
 
 @tasks.loop(hours=8)
-async def update_qm_roles_loop():
-    await eight_hour_task.execute(bot=bot, cnc_api_client=cnc_api_client)
+async def sync_qm_ranking_roles_loop():
+    await sync_qm_ranking_roles_task.execute(bot=bot, cnc_api_client=cnc_api_client)
 
 
 bot.run(TOKEN)
