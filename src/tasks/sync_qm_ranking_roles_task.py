@@ -2,11 +2,10 @@ import os
 
 from discord.utils import get
 
-from src.util.Utils import *
-from src.util.MyLogger import MyLogger
-from src.svc.CnCNetApiSvc import CnCNetApiSvc
-from src.constants.Constants import YR_DISCORD_ID
-from src.util.Utils import is_error, get_exception_msg, send_file_to_channel
+from src.util.utils import is_error, get_exception_msg, send_file_to_channel
+from src.util.logger import MyLogger
+from src.svc.cncnet_api_svc import CnCNetApiSvc
+from src.constants.constants import YR_DISCORD_ID
 
 logger = MyLogger("SyncQMRankingRoles")
 

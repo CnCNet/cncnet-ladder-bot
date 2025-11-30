@@ -1,5 +1,5 @@
-from src.util.MyLogger import MyLogger
-from src.util.Utils import send_message_to_log_channel, is_error, get_exception_msg
+from src.util.logger import MyLogger
+from src.util.utils import send_message_to_log_channel, is_error, get_exception_msg
 
 logger = MyLogger("GetMaps")
 

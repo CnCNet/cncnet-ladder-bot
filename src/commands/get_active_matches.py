@@ -7,10 +7,10 @@ from typing import Dict, Any, List, Optional
 
 from discord import Forbidden, DiscordServerError, Message
 from discord.ext.commands import Bot
-from src.constants.Constants import DEV_DISCORD_ID, DISCORDS
-from src.util.Embed import create_embeds
-from src.util.MyLogger import MyLogger
-from src.util.Utils import send_message_to_log_channel, get_channel_msgs, is_error, get_exception_msg
+from src.constants.constants import DEV_DISCORD_ID, DISCORDS
+from src.util.embed import create_embeds
+from src.util.logger import MyLogger
+from src.util.utils import send_message_to_log_channel, get_channel_msgs, is_error, get_exception_msg
 
 logger = MyLogger("GetActiveMatches")  # Logger for this module
 

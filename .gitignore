@@ -4,3 +4,6 @@
 src/__pycache__/*
 *.log
 **\__pycache__
+
+# Project tracking documents
+PROJECT_IMPROVEMENTS.md

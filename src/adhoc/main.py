@@ -1,10 +1,10 @@
 import os
 
+import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from src.constants.Constants import DEV_DISCORD_ID, BLITZ_DISCORD_ID, CNCNET_DISCORD_ID, YR_DISCORD_ID
-from src.util.Embed import *
+from src.constants.constants import DEV_DISCORD_ID, BLITZ_DISCORD_ID, CNCNET_DISCORD_ID, YR_DISCORD_ID
 
 # Load environment variables
 load_dotenv()
@@ -43,22 +43,6 @@ match_data_1v1 = {
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
-    # channel = bot.get_channel(CNCNET_LADDER_DEV_DISCORD_BOT_LOGS_ID)
-    # if channel:
-    #     embed = create_team_match_embed("Blitz 2v2", match_data)
-    #
-    #     # await channel.send(
-    #     #     content="Here are today's matches:",
-    #     #     embeds=[embed]
-    #     # )
-    #
-    # if channel:
-    #     embed = create_1v1_match_embed("Red Alert 2", match_data_1v1)
-    #
-    #     await channel.send(
-    #         content="Here are today's matches:",
-    #         embeds=[embed]
-    #     )
 
     print("Checking existing guilds...")
     for guild in bot.guilds:
@@ -68,12 +52,5 @@ async def on_ready():
         else:
             print(f"Remaining in authorized server: {guild.name} (ID: {guild.id})")
     print("Finished checking guilds.")
-
-    # cnc_api_client = CnCNetApiSvc(
-    #     response_handler=JsonResponseHandler
-    # )
-    #
-    # stats_json = cnc_api_client.fetch_stats("all")
-    # await fetch_active_qms(bot=bot, stats_json=stats_json, cnc_api_client=cnc_api_client)
 
 bot.run(TOKEN)

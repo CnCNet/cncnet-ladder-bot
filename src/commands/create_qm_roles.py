@@ -1,7 +1,7 @@
 import discord
-from src.util.MyLogger import MyLogger
+from src.util.logger import MyLogger
 from src.tasks.sync_qm_ranking_roles_task import get_role_name
-from src.util.Utils import send_message_to_log_channel
+from src.util.utils import send_message_to_log_channel
 
 logger = MyLogger("CreateQmRoles")
 

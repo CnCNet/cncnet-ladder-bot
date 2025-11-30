@@ -90,8 +90,6 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
 
     # Add a field for each team
     for team_id, players in teams.items():
-        print(f"Team {team_id}:")
-        print(str(players))
         player_list = ""
         for player in players:
             player_color = get_player_color_from_index(player['playerColor']).lower()

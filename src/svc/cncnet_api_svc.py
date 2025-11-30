@@ -1,6 +1,6 @@
 
 import requests
-from src.util.MyLogger import MyLogger
+from src.util.logger import MyLogger
 
 logger = MyLogger("CnCNetApiSvc")
 

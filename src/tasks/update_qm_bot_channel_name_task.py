@@ -1,8 +1,8 @@
 import asyncio
 import discord
-from src.constants.Constants import CNCNET_DISCORD_ID, YR_DISCORD_ID, DISCORDS
-from src.util.MyLogger import MyLogger
-from src.util.Utils import send_message_to_log_channel
+from src.constants.constants import CNCNET_DISCORD_ID, YR_DISCORD_ID, DISCORDS
+from src.util.logger import MyLogger
+from src.util.utils import send_message_to_log_channel
 
 RECENT_ACTIVE_PLAYERS = []
 logger = MyLogger("update_qm_bot_channel_name_task")

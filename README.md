@@ -10,10 +10,12 @@ CnCNet QM Discord Bot, in python
 ---
 #### Pip Installs:
 ```commandline
-pip install -R requirements.txt
+pip install -r requirements.txt
 ```
 #### Bot Commands
-- `!maps {ladder}` return the current QM maps of a given ladder
+- `!maps {ladder}` - Return the current QM maps of a given ladder
+- `!candle <player> [ladder]` - Display player's daily win/loss candle chart (default: blitz-2v2)
+- `!create_qm_roles <ladder>` - Create QM ranking roles for a ladder (admin only)
 ---
 #### Bot Scheduled Commands
 - 60 second interval: Send current QM player information to `qm-bot` channel

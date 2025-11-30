@@ -1,11 +1,10 @@
 from discord.ext.commands import Bot
 from requests import RequestException
-
-from src.constants.Constants import *
 from io import StringIO
 import discord
 
-from src.util.MyLogger import MyLogger
+from src.constants.constants import CNCNET_LADDER_DEV_DISCORD_BOT_LOGS_ID
+from src.util.logger import MyLogger
 
 logger = MyLogger("utils")
 
