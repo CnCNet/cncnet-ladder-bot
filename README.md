@@ -24,6 +24,7 @@ A Discord bot that monitors and reports real-time player activity for Command & 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [Documentation](#documentation)
 - [Installation](#installation)
   - [Local Development](#local-development)
   - [Production Deployment](#production-deployment)
@@ -69,6 +70,47 @@ docker compose up
 # OR run directly with Python
 python -m src.adhoc.main
 ```
+
+---
+
+## Documentation
+
+Comprehensive documentation is available to help you get the most out of the CnCNet Ladder Bot:
+
+### For Users
+
+- **[User Guide](docs/USER_GUIDE.md)** - Complete guide to using the bot
+  - What the bot does and how it works
+  - Getting started and understanding automated features
+  - Using commands effectively
+  - Understanding roles and rankings
+  - Tips and best practices
+
+- **[Command Reference](docs/COMMANDS.md)** - Detailed command documentation
+  - All available commands (prefix and slash)
+  - Command syntax and parameters
+  - Examples and use cases
+  - Troubleshooting common issues
+
+- **[FAQ](docs/FAQ.md)** - Frequently asked questions
+  - Common questions about features
+  - Troubleshooting guide
+  - Technical explanations
+  - How to get help
+
+### For Developers
+
+- **[Architecture Guide](.github/ARCHITECTURE.md)** - Technical architecture documentation
+  - Class-based architecture overview
+  - Component descriptions and data flow
+  - Design patterns and best practices
+  - Testing strategy
+
+- **[Deployment Guide](.github/DEPLOYMENT_SETUP.md)** - Production deployment setup
+  - GitHub Actions configuration
+  - Server setup and requirements
+  - Deployment workflow
+  - Troubleshooting deployment issues
 
 ---
 
@@ -165,26 +207,38 @@ DISCORDS = {
 
 ### Bot Commands
 
-All commands use the `!` prefix.
+The bot supports both **prefix commands** (`!command`) and modern **slash commands** (`/command`).
 
-| Command | Description | Example | Permissions |
-|---------|-------------|---------|-------------|
-| `!maps <ladder>` | Display current QM map pool for a ladder | `!maps yr` | Everyone |
-| `!candle <player> [ladder]` | Show player's daily win/loss candle chart | `!candle PlayerName blitz-2v2` | Everyone |
-| `!create_qm_roles <ladder>` | Create ranking roles for a ladder | `!create_qm_roles yr` | Admin only |
+**Slash commands are recommended** - they feature autocomplete, dropdowns, and better user experience!
 
-**Examples:**
+| Command | Prefix | Slash | Description | Permissions |
+|---------|--------|-------|-------------|-------------|
+| **Maps** | `!maps <ladder>` | `/maps <ladder>` | Display current QM map pool | Everyone |
+| **Candle** | `!candle <player> [ladder]` | `/candle [ladder] <player>` | Show player statistics | Everyone |
+| **Create Roles** | `!create_qm_roles <ladder>` | `/create_qm_roles <ladder>` | Create ranking roles | Admin only |
+| **Purge Channel** | `!purge_bot_channel_command` | `/purge_bot_channel` | Clean bot channel | Admin only |
 
-```
+**Quick Examples:**
+
+```bash
+# Using prefix commands
 !maps yr
-Returns: Current Yuri's Revenge QM map pool
-
 !candle ProPlayer blitz-2v2
-Returns: Candlestick chart showing ProPlayer's daily performance
-
 !create_qm_roles yr
-Creates roles: Rank 1, Top 3, Top 5, Top 10, Top 25, Top 50
+
+# Using slash commands (recommended)
+/maps yr              # Dropdown menu for ladder selection
+/candle blitz-2v2 ProPlayer  # Autocomplete for ladders
+/create_qm_roles yr   # Admin only
 ```
+
+**Why use slash commands?**
+- ✨ **Autocomplete** - Suggests valid ladder names as you type
+- 🎯 **Dropdowns** - Select from available options visually
+- 🛡️ **Type safety** - Discord validates parameters before sending
+- 📝 **Better UX** - Clear hints about what each parameter expects
+
+**📖 See the full [Command Reference](docs/COMMANDS.md) for detailed documentation.**
 
 ### Automated Tasks
 
@@ -388,11 +442,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Links & Resources
 
+### Documentation
+
+- **[User Guide](docs/USER_GUIDE.md)** - Complete guide to using the bot
+- **[Command Reference](docs/COMMANDS.md)** - Detailed command documentation
+- **[FAQ](docs/FAQ.md)** - Frequently asked questions
+- **[Architecture Guide](.github/ARCHITECTURE.md)** - Technical architecture
+- **[Deployment Guide](.github/DEPLOYMENT_SETUP.md)** - Production deployment setup
+
+### External Resources
+
 - **CnCNet Website**: https://cncnet.org
 - **CnCNet Ladder API**: https://ladder.cncnet.org
 - **Discord Server**: https://discord.gg/cncnet
 - **Bug Reports**: https://github.com/CnCNet/cncnet-ladder-bot/issues
-- **Deployment Guide**: [.github/DEPLOYMENT_SETUP.md](.github/DEPLOYMENT_SETUP.md)
 
 ---
 
