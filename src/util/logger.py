@@ -1,5 +1,6 @@
 from logging.handlers import RotatingFileHandler
 import logging
+import os
 
 
 class MyLogger:
@@ -12,6 +13,10 @@ class MyLogger:
 
         # Only add handlers if not already present (prevents duplicate handlers)
         if not self.logger.handlers:
+            # Ensure log directories exist
+            os.makedirs(os.path.dirname(debug_log_filename), exist_ok=True)
+            os.makedirs(os.path.dirname(info_log_filename), exist_ok=True)
+
             # Rotating debug handler
             debug_handler = RotatingFileHandler(debug_log_filename, maxBytes=self.MAX_LOG_FILE_SIZE,
                                                 backupCount=self.BACKUP_COUNT)
