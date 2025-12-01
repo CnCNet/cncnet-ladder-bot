@@ -59,7 +59,10 @@ jobs:
               # Remove directory if it exists but is not a git repo
               if [ -d "${{ secrets.DEPLOY_PATH }}" ]; then
                 echo "   Removing existing non-git directory..."
-                rm -rf "${{ secrets.DEPLOY_PATH }}"
+                # Make all files writable to avoid permission issues with __pycache__
+                chmod -R +w "${{ secrets.DEPLOY_PATH }}" 2>/dev/null || true
+                # Force remove everything (use sudo if regular rm fails)
+                rm -rf "${{ secrets.DEPLOY_PATH }}" || sudo rm -rf "${{ secrets.DEPLOY_PATH }}"
               fi
 
               echo "   Creating deployment directory and cloning repository..."
