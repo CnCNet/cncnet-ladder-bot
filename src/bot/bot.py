@@ -1,154 +1,93 @@
-# bot.py
-import os
+"""
+CnCNet Ladder Discord Bot
 
+Main entry point for the bot.
+Monitors Quick Match queues and provides ladder statistics across multiple Discord servers.
+"""
 from discord.ext import commands
-from discord.ext import tasks
-from dotenv import load_dotenv
+from discord import Intents
 
-from src.commands.get_maps import get_maps
-from src.commands.create_qm_roles import create_qm_roles as create_qm_roles_impl
-from src.commands.candle import candle as candle_impl
-from src.svc.cncnet_api_svc import CnCNetApiSvc
-from src.tasks import update_channel_bot_task, sync_qm_ranking_roles_task
-from src.tasks.update_qm_bot_channel_name_task import update_qm_bot_channel_name_task
-from src.util.utils import send_message_to_log_channel
+from src.bot.config import BotConfig
+from src.bot.bot_state import BotState
+from src.bot.lifecycle import BotLifecycle
+from src.bot.command_manager import CommandManager
+from src.bot.task_manager import TaskManager
 from src.util.logger import MyLogger
-from src.constants.constants import (
-    YR_DISCORD_ID,
-    CNCNET_DISCORD_ID,
-    BLITZ_DISCORD_ID,
-    DEV_DISCORD_ID,
-    QM_BOT_CHANNEL_NAME
-)
-import discord
+from src.util.utils import send_message_to_log_channel
 
-load_dotenv()
-TOKEN: str = str(os.getenv('DISCORD_CLIENT_SECRET'))
-DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
-intents = discord.Intents(messages=True, guilds=True, message_content=True, guild_messages=True, members=True)
-bot = commands.Bot(command_prefix='!', intents=intents)
-global cnc_api_client
-global ladders
-logger = MyLogger("bot")
+logger = MyLogger("main")
 
 
-@bot.event
-async def on_ready():
+class CnCNetBot:
+    """
+    Main bot controller.
 
-    logger.log(f"bot online with DEBUG={DEBUG}")
-    await send_message_to_log_channel(bot, "Ladder bot is online...")
+    Coordinates all bot components including configuration, state management,
+    commands, tasks, and lifecycle events.
+    """
 
-    logger.log("Checking existing guilds...")
-    for guild in bot.guilds:
-        if guild.id != YR_DISCORD_ID and guild.id != CNCNET_DISCORD_ID and guild.id != BLITZ_DISCORD_ID and guild.id != DEV_DISCORD_ID:
-            logger.log(f"Leaving unauthorized server on startup: {guild.name} (ID: {guild.id})")
-            await guild.leave()
-        else:
-            logger.log(f"Remaining in authorized server: {guild.name} (ID: {guild.id})")
-    logger.log("Finished checking guilds.")
+    def __init__(self):
+        """Initialize the bot and all its components"""
+        # Load configuration from environment
+        self.config = BotConfig.from_env()
 
-    await purge_bot_channel(0)
+        # Initialize Discord bot with required intents
+        intents = Intents(
+            messages=True,
+            guilds=True,
+            message_content=True,
+            guild_messages=True,
+            members=True
+        )
+        self.bot = commands.Bot(
+            command_prefix=self.config.command_prefix,
+            intents=intents
+        )
 
-    global cnc_api_client
-    cnc_api_client = CnCNetApiSvc()
+        # Initialize bot components
+        self.state = BotState()
+        self.lifecycle = BotLifecycle(self.bot, self.state, self.config)
+        self.command_manager = CommandManager(self.bot, self.state)
+        self.task_manager = TaskManager(self.bot, self.state, self.config)
 
-    global ladders
-    ladders = []
-    ladders_json = cnc_api_client.fetch_ladders()
-    for item in ladders_json:
-        if item["private"] == 0:
-            ladders.append(item["abbreviation"])
+        # Register event handlers
+        self._register_events()
 
-    ladders_string = ", ".join(ladders)
-    logger.log(f"Ladders found: ({ladders_string})")
+        # Register all commands (prefix and slash)
+        self.command_manager.register_all_commands()
 
-    update_bot_channel.start()
-    
-    periodic_update_qm_bot_channel_name.start()
+        logger.log("CnCNet Bot initialized successfully")
 
-    if not DEBUG:
-        sync_qm_ranking_roles_loop.start()
+    def _register_events(self) -> None:
+        """Register Discord event handlers"""
 
+        @self.bot.event
+        async def on_ready():
+            """Called when the bot successfully connects to Discord"""
+            await self.lifecycle.on_ready()
+            self.task_manager.start_all_tasks()
 
-@tasks.loop(minutes=10)
-async def periodic_update_qm_bot_channel_name():
+        @self.bot.event
+        async def on_rate_limit(rate_limit_info):
+            """Called when the bot is being rate limited by Discord"""
+            logger.warning(f"WARNING - We are being rate limited: {rate_limit_info}")
+            await send_message_to_log_channel(bot=self.bot, msg=str(rate_limit_info))
 
-    # Skip the first execution after bot comes online
-    if not hasattr(periodic_update_qm_bot_channel_name, "_has_run"):
-        periodic_update_qm_bot_channel_name._has_run = True
-        return
-    
-    stats_json = cnc_api_client.fetch_stats("all")
-    active_matches_json = cnc_api_client.active_matches(ladder="all")
-    await update_qm_bot_channel_name_task(bot, stats_json, active_matches_json)
-
-
-@tasks.loop(seconds=30)
-async def update_bot_channel():
-    response = await update_channel_bot_task.execute(bot=bot, ladders=ladders, cnc_api_client=cnc_api_client, debug=DEBUG)
-    if response.get("error"):
-        logger.error(f"Error in update_bot_channel: {response['error']}")
-        update_bot_channel.change_interval(seconds=90)
-    else:
-        # Restore interval to 30 seconds if previously changed due to error
-        if update_bot_channel.seconds != 30:
-            update_bot_channel.change_interval(seconds=30)
-
-
-@bot.command()
-async def maps(ctx, arg=""):
-    await get_maps(ctx=ctx, bot=bot, arg=arg, ladders=ladders, cnc_api_client=cnc_api_client)
-
-
-@bot.command()
-async def candle(ctx, player: str = None, ladder: str = "blitz-2v2"):
-    await candle_impl(ctx=ctx, bot=bot, player=player, ladder=ladder, ladders=ladders, cnc_api_client=cnc_api_client)
+    def run(self) -> None:
+        """Start the bot"""
+        logger.log(f"Starting CnCNet Ladder Bot (DEBUG={self.config.debug})")
+        try:
+            self.bot.run(self.config.token)
+        except KeyboardInterrupt:
+            logger.log("Bot stopped by user")
+        except Exception as e:
+            logger.error(f"Bot crashed: {e}")
+            raise
+        finally:
+            logger.log("Bot shutting down...")
+            self.task_manager.stop_all_tasks()
 
 
-@bot.event
-async def on_rate_limit(rate_limit_info):
-    logger.warning(f"WARNING - We are being rate limited: {rate_limit_info}")
-    await send_message_to_log_channel(bot=bot, msg=rate_limit_info)
-
-
-@bot.command()
-async def purge_bot_channel_command(ctx):
-    if not ctx.message.author.guild_permissions.administrator:
-        logger.error(f"{ctx.message.author} is not admin, exiting command.")
-        return
-    await purge_bot_channel(0)
-
-
-@bot.command()
-async def create_qm_roles(ctx, ladder: str = None):
-    await create_qm_roles_impl(ctx=ctx, bot=bot, ladder=ladder)
-
-
-async def purge_bot_channel(keep_messages_count: int):  # keep up to 'keep_messages' messages
-    guilds = bot.guilds
-
-    for server in guilds:
-        for channel in server.channels:
-            if QM_BOT_CHANNEL_NAME in channel.name:
-                try:
-                    message_count = 0
-                    async for _ in channel.history(limit=2):
-                        message_count += 1
-                        if message_count > keep_messages_count:
-                            deleted = await channel.purge()
-                            logger.debug(f"Deleted {len(deleted)} message(s) from: server '{server.name}', channel: '{channel.name}'")
-                            continue
-                except (discord.DiscordServerError, discord.errors.HTTPException) as e:
-                    await send_message_to_log_channel(bot=bot, msg=f"Failed to delete message from server '{server.name}', {str(e)}")
-
-
-def is_in_bot_channel(ctx):
-    return ctx.channel.name.startswith(QM_BOT_CHANNEL_NAME) or ctx.message.author.guild_permissions.administrator
-
-
-@tasks.loop(hours=8)
-async def sync_qm_ranking_roles_loop():
-    await sync_qm_ranking_roles_task.execute(bot=bot, cnc_api_client=cnc_api_client)
-
-
-bot.run(TOKEN)
+if __name__ == "__main__":
+    bot = CnCNetBot()
+    bot.run()
