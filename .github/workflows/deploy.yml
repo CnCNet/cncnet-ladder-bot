@@ -52,9 +52,16 @@ jobs:
             echo "Deploy path: ${{ secrets.DEPLOY_PATH }}"
             echo ""
 
-            # Check if deployment directory exists
-            if [ ! -d "${{ secrets.DEPLOY_PATH }}" ]; then
-              echo "📥 First-time deployment detected"
+            # Check if we need to clone the repository
+            if [ ! -d "${{ secrets.DEPLOY_PATH }}/.git" ]; then
+              echo "📥 First-time deployment detected (no git repository found)"
+
+              # Remove directory if it exists but is not a git repo
+              if [ -d "${{ secrets.DEPLOY_PATH }}" ]; then
+                echo "   Removing existing non-git directory..."
+                rm -rf "${{ secrets.DEPLOY_PATH }}"
+              fi
+
               echo "   Creating deployment directory and cloning repository..."
 
               # Ensure parent directory exists
