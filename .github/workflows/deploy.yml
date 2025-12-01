@@ -55,24 +55,23 @@ jobs:
             # Check if we need to clone the repository
             if [ ! -d "${{ secrets.DEPLOY_PATH }}/.git" ]; then
               echo "📥 First-time deployment detected (no git repository found)"
-
-              # Verify directory doesn't already exist (safety check)
-              if [ -d "${{ secrets.DEPLOY_PATH }}" ]; then
-                echo "   ❌ ERROR: Directory exists but is not a git repository!"
-                echo "   DEPLOY_PATH=${{ secrets.DEPLOY_PATH }}"
-                echo "   Please use a different DEPLOY_PATH or manually remove this directory."
-                exit 1
-              fi
-
-              echo "   Cloning repository to new directory..."
+              echo "   Cloning repository..."
 
               # Ensure parent directory exists
               PARENT_DIR=$(dirname "${{ secrets.DEPLOY_PATH }}")
               mkdir -p "$PARENT_DIR"
 
               # Clone the repository
+              # If DEPLOY_PATH exists but is empty, git clone will work
+              # If it has files, git clone will fail with clear error
               echo "   Cloning from $REPO_URL..."
-              git clone "$REPO_URL" "${{ secrets.DEPLOY_PATH }}"
+              git clone "$REPO_URL" "${{ secrets.DEPLOY_PATH }}" || {
+                echo "   ❌ ERROR: Git clone failed"
+                echo "   This usually means the directory exists and is not empty"
+                echo "   Directory contents:"
+                ls -la "${{ secrets.DEPLOY_PATH }}" 2>/dev/null || true
+                exit 1
+              }
               echo "   ✅ Repository cloned successfully"
               echo ""
             fi
