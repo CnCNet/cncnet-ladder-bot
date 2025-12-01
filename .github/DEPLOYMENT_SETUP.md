@@ -8,8 +8,10 @@ When you push to the `master` branch:
 1. ✅ GitHub Actions runs syntax checks
 2. ✅ Tests all Python imports
 3. ✅ If tests pass, automatically deploys to your server
-4. ✅ Shows deployment status in GitHub
-5. ✅ Notifies you if deployment fails
+4. ✅ Auto-clones repository on first deployment (no manual setup needed!)
+5. ✅ Auto-creates `.env` file from GitHub Secrets
+6. ✅ Shows deployment status in GitHub
+7. ✅ Notifies you if deployment fails
 
 ## 🔧 One-Time Setup
 
@@ -44,8 +46,8 @@ cat github-actions-key.pub
 **Now SSH into your server:**
 
 ```bash
-ssh root@174.138.13.193
-# or: ssh your-username@174.138.13.193
+ssh root@YOUR_SERVER_IP
+# or: ssh your-username@YOUR_SERVER_IP
 ```
 
 **On the server:**
@@ -66,7 +68,7 @@ exit
 **Test the connection from your local machine:**
 
 ```bash
-ssh -i github-actions-key root@174.138.13.193
+ssh -i github-actions-key root@YOUR_SERVER_IP
 
 # If this works, you're good! Exit the server.
 ```
@@ -99,7 +101,7 @@ cat github-actions-key
 #### SECRET 2: `SERVER_HOST`
 
 - **Name:** `SERVER_HOST`
-- **Value:** `174.138.13.193`
+- **Value:** `YOUR_SERVER_IP` (e.g., `192.168.1.100` or `your-server.com`)
 - Click **Add secret**
 
 #### SECRET 3: `SERVER_USER`
@@ -111,29 +113,54 @@ cat github-actions-key
 #### SECRET 4: `DEPLOY_PATH`
 
 - **Name:** `DEPLOY_PATH`
-- **Value:** The absolute path to your bot directory on the server
+- **Value:** The absolute path where you want the bot installed on the server
   - Example: `/root/cncnet-ladder-bot` or `/home/youruser/cncnet-ladder-bot`
+  - **Note:** The directory doesn't need to exist - it will be created automatically on first deployment
 - Click **Add secret**
 
-#### SECRET 5: `SERVER_PORT` (Optional)
+#### SECRET 5: `DISCORD_CLIENT_SECRET`
+
+- **Name:** `DISCORD_CLIENT_SECRET`
+- **Value:** Your Discord bot token
+  - Get this from: https://discord.com/developers/applications
+  - Select your application → Bot → Reset Token / Copy Token
+  - Example format: `MTAyNDE0MTE1NTkwODE5NDM5NQ.GZirke.DwT50k0VqjkfspLNS...`
+- Click **Add secret**
+
+#### SECRET 6: `SERVER_PORT` (Optional)
 
 Only add this if you use a non-standard SSH port:
 - **Name:** `SERVER_PORT`
 - **Value:** Your SSH port (default is 22, so skip if using default)
 - Click **Add secret**
 
+#### SECRET 7: `DEBUG` (Optional)
+
+Only add this if you want to enable debug mode:
+- **Name:** `DEBUG`
+- **Value:** `true` or `false` (defaults to `false` if not set)
+- Click **Add secret**
+- **Note:** Debug mode is for development/testing only. Leave unset for production.
+
 ---
 
 ### Step 4: Verify Secrets Are Set
 
-After adding all secrets, you should see:
+After adding all required secrets, you should see:
 
+**Required:**
 ```
 ✅ SSH_PRIVATE_KEY
 ✅ SERVER_HOST
 ✅ SERVER_USER
 ✅ DEPLOY_PATH
-✅ SERVER_PORT (optional)
+✅ DISCORD_CLIENT_SECRET
+```
+
+**Optional:**
+```
+✅ SERVER_PORT (if using non-standard port)
+✅ DEBUG (if you want debug mode enabled)
 ```
 
 ---
@@ -164,6 +191,20 @@ git push origin master
 ---
 
 ## 🚀 Using Auto-Deployment
+
+### First Deployment
+
+On your **very first deployment**, the workflow will automatically:
+1. ✅ Create the `DEPLOY_PATH` directory on your server
+2. ✅ Clone the repository from GitHub
+3. ✅ Create `src/.env` file from your GitHub Secrets
+4. ✅ Build and start the Docker containers
+5. ✅ No manual setup needed!
+
+After the first deployment, subsequent deployments will:
+- Pull the latest code changes
+- Regenerate the `.env` file with current secret values
+- Restart the bot
 
 ### Normal Workflow
 
@@ -354,11 +395,15 @@ You'll see:
 Your deployment is now fully automated! Every push to `master` will:
 
 1. ✅ Run pre-deployment checks
-2. ✅ Deploy to `174.138.13.193`
-3. ✅ Create automatic backups
-4. ✅ Restart containers
-5. ✅ Show you the results
+2. ✅ Auto-clone repository (first time only)
+3. ✅ Auto-create `.env` file from secrets (every deployment)
+4. ✅ Deploy to your server
+5. ✅ Create automatic backups
+6. ✅ Restart containers
+7. ✅ Show you the results
 
 **No more manual WinSCP uploads!**
+**No more manual git cloning!**
+**No more manual .env file management!**
 **No more manual SSH deployments!**
 **Just push and watch it deploy!** 🚀
