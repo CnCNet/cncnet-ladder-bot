@@ -56,16 +56,15 @@ jobs:
             if [ ! -d "${{ secrets.DEPLOY_PATH }}/.git" ]; then
               echo "📥 First-time deployment detected (no git repository found)"
 
-              # Remove directory if it exists but is not a git repo
+              # Verify directory doesn't already exist (safety check)
               if [ -d "${{ secrets.DEPLOY_PATH }}" ]; then
-                echo "   Removing existing non-git directory..."
-                # Make all files writable to avoid permission issues with __pycache__
-                chmod -R +w "${{ secrets.DEPLOY_PATH }}" 2>/dev/null || true
-                # Force remove everything (use sudo if regular rm fails)
-                rm -rf "${{ secrets.DEPLOY_PATH }}" || sudo rm -rf "${{ secrets.DEPLOY_PATH }}"
+                echo "   ❌ ERROR: Directory exists but is not a git repository!"
+                echo "   DEPLOY_PATH=${{ secrets.DEPLOY_PATH }}"
+                echo "   Please use a different DEPLOY_PATH or manually remove this directory."
+                exit 1
               fi
 
-              echo "   Creating deployment directory and cloning repository..."
+              echo "   Cloning repository to new directory..."
 
               # Ensure parent directory exists
               PARENT_DIR=$(dirname "${{ secrets.DEPLOY_PATH }}")
