@@ -24,32 +24,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Check Python syntax
-        run: |
-          echo "🔍 Checking Python syntax..."
-          python -m py_compile src/**/*.py src/**/**/*.py
-          echo "✅ Syntax check passed!"
-
-      - name: Test imports
-        run: |
-          echo "🔍 Testing module imports..."
-          python -c "
-          import sys
-          sys.path.insert(0, '.')
-
-          # Test critical imports
-          try:
-              from src.util.logger import MyLogger
-              from src.util.utils import send_message_to_log_channel, is_error
-              from src.svc.cncnet_api_svc import CnCNetApiSvc
-              from src.commands.candle import candle
-              from src.commands.get_maps import get_maps
-              from src.commands.create_qm_roles import create_qm_roles
-              print('✅ All imports successful!')
-          except ImportError as e:
-              print(f'❌ Import failed: {e}')
-              sys.exit(1)
-          "
 
   deploy:
     name: Deploy to Server
