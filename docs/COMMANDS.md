@@ -9,7 +9,7 @@ Complete reference for all CnCNet Ladder Bot commands.
 | Command | Prefix | Slash | Description |
 |---------|--------|-------|-------------|
 | **Maps** | `!maps <ladder>` | `/maps <ladder>` | Show map pool |
-| **Candle** | `!candle <player> [ladder]` | `/candle [ladder] <player>` | Player statistics |
+| **Candle** | `!candle <player> <ladder>` | `/candle <ladder> <player>` | Player statistics |
 | **Create Roles** | `!create_qm_roles <ladder>` | `/create_qm_roles <ladder>` | Create ranking roles (Admin) |
 | **Purge Channel** | `!purge_bot_channel_command` | `/purge_bot_channel` | Clean bot channel (Admin) |
 
@@ -71,23 +71,21 @@ Display a player's daily win/loss candle chart showing performance over time.
 
 **Syntax:**
 ```
-!candle <player> [ladder]
-/candle [ladder] <player>
+!candle <player> <ladder>
+/candle <ladder> <player>
 ```
 
 **Parameters:**
 - `player` - Player name to lookup (required)
-- `ladder` - Which ladder to check (optional, default: blitz-2v2)
+- `ladder` - Which ladder to check (required)
 
 **Examples:**
 ```
-!candle ProPlayer
 !candle ProPlayer yr
 !candle ProPlayer blitz-2v2
 
 /candle blitz-2v2 ProPlayer
 /candle yr ProPlayer
-/candle ProPlayer    (uses default: blitz-2v2)
 ```
 
 **What it shows:**
@@ -95,7 +93,7 @@ Display a player's daily win/loss candle chart showing performance over time.
 - Performance trends
 - Candlestick chart visualization
 
-**Note:** Slash command has ladder parameter FIRST for easier dropdown selection.
+**Note:** Slash command has ladder parameter FIRST for easier dropdown selection. Both parameters are required.
 
 ---
 
@@ -217,9 +215,10 @@ Slash commands (`/`) provide a better user experience:
    - List filters as you type
    - Press Enter to select
 
-3. **Leverage defaults**
-   - `/candle ProPlayer` uses default ladder (blitz-2v2)
-   - Skip optional parameters when defaults work
+3. **Required parameters are clear**
+   - Discord shows which parameters are required
+   - Prevents incomplete commands
+   - Helpful error messages
 
 ### Using Prefix Commands
 

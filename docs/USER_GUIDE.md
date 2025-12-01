@@ -149,7 +149,7 @@ For detailed command documentation, see [COMMANDS.md](COMMANDS.md).
 | Command | What It Does |
 |---------|--------------|
 | `!maps <ladder>` or `/maps <ladder>` | Show current map pool |
-| `!candle <player> [ladder]` or `/candle [ladder] <player>` | Show player statistics chart |
+| `!candle <player> <ladder>` or `/candle <ladder> <player>` | Show player statistics chart |
 | `!create_qm_roles <ladder>` or `/create_qm_roles <ladder>` | Create ranking roles (Admin) |
 | `!purge_bot_channel_command` or `/purge_bot_channel` | Clean bot channel (Admin) |
 

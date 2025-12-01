@@ -55,11 +55,11 @@ class CommandManager:
             )
 
         @self.bot.command(name="candle")
-        async def candle(ctx: commands.Context, player: str = None, ladder: str = "blitz-2v2") -> None:
+        async def candle(ctx: commands.Context, player: str, ladder: str) -> None:
             """
             Display player's daily win/loss candle chart.
 
-            Usage: !candle <player> [ladder]
+            Usage: !candle <player> <ladder>
             Example: !candle ProPlayer yr
             """
             await candle_impl(
@@ -113,14 +113,14 @@ class CommandManager:
 
         @self.bot.tree.command(name="candle", description="Display player's daily win/loss candle chart")
         @app_commands.describe(
-            ladder="Which ladder to check (default: blitz-2v2)",
+            ladder="Which ladder to check",
             player="Player name to lookup"
         )
         @app_commands.autocomplete(ladder=self._ladder_autocomplete)
         async def candle_slash(
             interaction: Interaction,
-            ladder: str = "blitz-2v2",
-            player: str = None
+            ladder: str,
+            player: str
         ) -> None:
             """Slash command version of !candle with ladder dropdown first"""
             ctx = SlashContext(interaction)

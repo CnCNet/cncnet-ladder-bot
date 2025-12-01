@@ -214,7 +214,7 @@ The bot supports both **prefix commands** (`!command`) and modern **slash comman
 | Command | Prefix | Slash | Description | Permissions |
 |---------|--------|-------|-------------|-------------|
 | **Maps** | `!maps <ladder>` | `/maps <ladder>` | Display current QM map pool | Everyone |
-| **Candle** | `!candle <player> [ladder]` | `/candle [ladder] <player>` | Show player statistics | Everyone |
+| **Candle** | `!candle <player> <ladder>` | `/candle <ladder> <player>` | Show player statistics | Everyone |
 | **Create Roles** | `!create_qm_roles <ladder>` | `/create_qm_roles <ladder>` | Create ranking roles | Admin only |
 | **Purge Channel** | `!purge_bot_channel_command` | `/purge_bot_channel` | Clean bot channel | Admin only |
 
@@ -223,13 +223,13 @@ The bot supports both **prefix commands** (`!command`) and modern **slash comman
 ```bash
 # Using prefix commands
 !maps yr
-!candle ProPlayer blitz-2v2
+!candle ProPlayer yr
 !create_qm_roles yr
 
 # Using slash commands (recommended)
-/maps yr              # Dropdown menu for ladder selection
-/candle blitz-2v2 ProPlayer  # Autocomplete for ladders
-/create_qm_roles yr   # Admin only
+/maps yr                     # Dropdown menu for ladder selection
+/candle yr ProPlayer         # Ladder dropdown first, then player name
+/create_qm_roles yr          # Admin only
 ```
 
 **Why use slash commands?**

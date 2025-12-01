@@ -6,7 +6,7 @@ logger = MyLogger("Candle")
 async def candle(ctx, bot, player, ladder, ladders, cnc_api_client):
     """Check a player's daily wins and losses for a specific ladder."""
     if not player:
-        await ctx.send("Usage: `!candle <player> [ladder]` (default: blitz-2v2)")
+        await ctx.send("Usage: `!candle <player> <ladder>`")
         return
 
     # Case-insensitive ladder matching
@@ -23,12 +23,12 @@ async def candle(ctx, bot, player, ladder, ladders, cnc_api_client):
 
     if isinstance(stats, Exception):
         logger.error(f"Exception fetching daily stats for {player} on {ladder_actual}: {type(stats).__name__}, {str(stats)}")
-        await ctx.send(f"Error: Could not fetch stats for {player}")
+        await ctx.send(f"Error: Could not fetch stats for {player} on {ladder_actual.upper()}")
         return
 
     if "error" in stats:
         logger.error(f"API error fetching daily stats for {player} on {ladder_actual}: {stats.get('error')}")
-        await ctx.send(f"Error: Could not fetch stats for {player}")
+        await ctx.send(f"Error: Could not fetch stats for {player} on {ladder_actual.upper()}")
         return
 
     wins = stats.get('wins', 0)
