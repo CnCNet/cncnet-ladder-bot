@@ -51,22 +51,6 @@ jobs:
               sys.exit(1)
           "
 
-      - name: Check for common issues
-        run: |
-          echo "🔍 Checking for common issues..."
-
-          # Check for print statements (should use logger)
-          if grep -r "print(" src/ --include="*.py" | grep -v "# print(" | grep -v ".pyc"; then
-            echo "⚠️  Warning: Found print() statements. Consider using logger instead."
-          fi
-
-          # Check for TODO comments
-          if grep -r "TODO" src/ --include="*.py"; then
-            echo "ℹ️  Found TODO comments (informational only)"
-          fi
-
-          echo "✅ Pre-deployment checks complete!"
-
   deploy:
     name: Deploy to Server
     needs: pre-deployment-checks
@@ -78,14 +62,54 @@ jobs:
 
       - name: Deploy to production server
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          REPO_URL: https://github.com/CnCNet/cncnet-ladder-bot.git
+          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+          DEBUG_MODE: ${{ secrets.DEBUG || 'false' }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
+          envs: REPO_URL,DISCORD_CLIENT_SECRET,DEBUG_MODE
           script: |
             echo "🚀 Starting deployment..."
-            cd ${{ secrets.DEPLOY_PATH }}
+            echo "Repository: $REPO_URL"
+            echo "Deploy path: ${{ secrets.DEPLOY_PATH }}"
+            echo ""
+
+            # Check if deployment directory exists
+            if [ ! -d "${{ secrets.DEPLOY_PATH }}" ]; then
+              echo "📥 First-time deployment detected"
+              echo "   Creating deployment directory and cloning repository..."
+
+              # Ensure parent directory exists
+              PARENT_DIR=$(dirname "${{ secrets.DEPLOY_PATH }}")
+              mkdir -p "$PARENT_DIR"
+
+              # Clone the repository
+              echo "   Cloning from $REPO_URL..."
+              git clone "$REPO_URL" "${{ secrets.DEPLOY_PATH }}"
+              echo "   ✅ Repository cloned successfully"
+              echo ""
+            fi
+
+            # Navigate to deployment directory
+            cd "${{ secrets.DEPLOY_PATH }}"
+
+            # Create .env file from GitHub Secrets
+            echo "🔐 Creating .env file from GitHub Secrets..."
+            cat > src/.env << EOF
+            DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET"
+            DEBUG=$DEBUG_MODE
+            EOF
+            echo "   ✅ .env file created"
+            echo ""
+
+            # Ensure deploy script is executable
+            chmod +x scripts/deploy.sh
+
+            # Run deployment script
             ./scripts/deploy.sh
 
       - name: Deployment status

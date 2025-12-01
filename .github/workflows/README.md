@@ -17,7 +17,9 @@ This directory contains automated workflows for the CnCNet Ladder Bot.
    - Checks for common issues (print statements, TODOs)
 
 2. **Deployment:**
-   - SSHs to production server (174.138.13.193)
+   - SSHs to production server
+   - Auto-clones repository (first deployment only)
+   - Auto-creates `src/.env` file from GitHub Secrets
    - Runs `/path/to/cncnet-ladder-bot/scripts/deploy.sh`
    - Shows deployment status
 
@@ -31,13 +33,22 @@ This directory contains automated workflows for the CnCNet Ladder Bot.
 
 These must be set in: **Settings → Secrets and variables → Actions**
 
+**Required Secrets:**
+
 | Secret Name | Description | Example |
 |------------|-------------|---------|
 | `SSH_PRIVATE_KEY` | Private SSH key for server access | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
-| `SERVER_HOST` | Server IP or hostname | `174.138.13.193` |
+| `SERVER_HOST` | Server IP or hostname | `YOUR_SERVER_IP` |
 | `SERVER_USER` | SSH username | `root` or your username |
 | `DEPLOY_PATH` | Absolute path to bot directory | `/root/cncnet-ladder-bot` |
-| `SERVER_PORT` | SSH port (optional, defaults to 22) | `22` |
+| `DISCORD_CLIENT_SECRET` | Your Discord bot token | `MTAyNDE0MTE1NTkwODE5...` |
+
+**Optional Secrets:**
+
+| Secret Name | Description | Default |
+|------------|-------------|---------|
+| `SERVER_PORT` | SSH port | `22` |
+| `DEBUG` | Enable debug mode | `false` |
 
 ---
 
