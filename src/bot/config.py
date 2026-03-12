@@ -19,6 +19,7 @@ class BotConfig:
     update_bot_channel_error_interval_seconds: int = 90
     update_channel_name_interval_minutes: int = 10
     sync_roles_interval_hours: int = 8
+    cleanup_duplicate_messages_interval_minutes: int = 60
 
     # Authorized servers
     authorized_servers: Set[int] = None

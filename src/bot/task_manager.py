@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 from src.tasks import update_channel_bot_task, sync_qm_ranking_roles_task
 from src.tasks.update_qm_bot_channel_name_task import update_qm_bot_channel_name_task
+from src.tasks.cleanup_duplicate_messages_task import execute as cleanup_duplicate_messages
 from src.util.logger import MyLogger
 
 logger = MyLogger("task_manager")
@@ -84,10 +85,22 @@ class TaskManager:
                 cnc_api_client=self.state.cnc_api_client
             )
 
+        @tasks.loop(minutes=self.config.cleanup_duplicate_messages_interval_minutes)
+        async def cleanup_duplicates() -> None:
+            """
+            Clean up duplicate messages in bot channels.
+            Runs every 60 minutes to ensure only one message exists per channel.
+            """
+            await cleanup_duplicate_messages(
+                bot=self.bot,
+                debug=self.config.debug
+            )
+
         # Store task references
         self.update_bot_channel_task = update_bot_channel
         self.update_channel_name_task = update_channel_name
         self.sync_roles_task = sync_roles
+        self.cleanup_duplicates_task = cleanup_duplicates
 
     def start_all_tasks(self) -> None:
         """
@@ -97,6 +110,7 @@ class TaskManager:
         """
         self.update_bot_channel_task.start()
         self.update_channel_name_task.start()
+        self.cleanup_duplicates_task.start()
 
         if not self.config.debug:
             self.sync_roles_task.start()
@@ -110,6 +124,9 @@ class TaskManager:
 
         if self.update_channel_name_task.is_running():
             self.update_channel_name_task.cancel()
+
+        if self.cleanup_duplicates_task.is_running():
+            self.cleanup_duplicates_task.cancel()
 
         if self.sync_roles_task.is_running():
             self.sync_roles_task.cancel()

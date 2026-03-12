@@ -97,20 +97,31 @@ async def fetch_active_qms(
                 bot_message = await qm_bot_channel.fetch_message(message_id)
             except Exception:
                 bot_message = None  # Message may have been deleted
+                logger.debug(f"Cached message {message_id} not found in channel {channel_id}, will send new message")
 
+        sent_msg = None
         try:
             if bot_message:
                 await bot_message.edit(content=summary_text[:2000], embeds=all_embeds)
             else:
                 sent_msg = await qm_bot_channel.send(content=summary_text[:2000], embeds=all_embeds)
-                last_summary_message_ids[channel_id] = sent_msg.id
-        except (HTTPException, Forbidden, DiscordServerError) as e:
+        except Exception as e:
+            # If edit failed, clear the cache so we'll send a new message next time
+            if bot_message and channel_id in last_summary_message_ids:
+                logger.warning(f"Edit failed for message {message_id} in channel {channel_id}, clearing cache")
+                del last_summary_message_ids[channel_id]
+
             error_msg = (
                 f"Failed to send/edit summary message in '{server.name}.{qm_bot_channel.name}'\n"
                 f"**{type(e).__name__}:** {e}"
             )
             logger.error(error_msg)
             await send_message_to_log_channel(bot=bot, msg=error_msg)
+        finally:
+            # CRITICAL: If we successfully sent a new message, cache its ID no matter what
+            if sent_msg is not None:
+                last_summary_message_ids[channel_id] = sent_msg.id
+                logger.debug(f"Cached new message ID {sent_msg.id} for channel {channel_id}")
 
     logger.debug("Completed fetching active matches.")
 
