@@ -106,14 +106,24 @@ async def fetch_active_qms(
             else:
                 sent_msg = await qm_bot_channel.send(content=summary_text[:2000], embeds=all_embeds)
         except Exception as e:
-            # If edit failed, clear the cache so we'll send a new message next time
+            # Only clear cache if message is permanently gone (404), not for transient errors (503, 500, etc)
             if bot_message and channel_id in last_summary_message_ids:
-                logger.warning(f"Edit failed for message {message_id} in channel {channel_id}, clearing cache")
-                del last_summary_message_ids[channel_id]
+                # Check if it's a "message not found" error (404)
+                is_not_found = (
+                    hasattr(e, 'status') and e.status == 404
+                ) or (
+                    'Unknown Message' in str(e) or '404' in str(e)
+                )
+                if is_not_found:
+                    logger.warning(f"Message {message_id} not found in channel {channel_id}, clearing cache")
+                    del last_summary_message_ids[channel_id]
+                else:
+                    logger.warning(f"Transient error editing message {message_id}, keeping cache for retry")
 
+            operation = f"edit message {message_id}" if bot_message else "send new message"
             error_msg = (
-                f"Failed to send/edit summary message in '{server.name}.{qm_bot_channel.name}'\n"
-                f"**{type(e).__name__}:** {e}"
+                f"**Error:** Failed to {operation} in '{server.name}.{qm_bot_channel.name}' (channel_id: {channel_id})\n"
+                f"**Cause:** {get_exception_msg(e)}"
             )
             logger.error(error_msg)
             await send_message_to_log_channel(bot=bot, msg=error_msg)
