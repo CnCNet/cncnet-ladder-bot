@@ -6,20 +6,10 @@ from src.util.utils import send_message_to_log_channel
 
 RECENT_ACTIVE_PLAYERS = []
 logger = MyLogger("update_qm_bot_channel_name_task")
-count = 0
-total_count = 0
 
 async def update_qm_bot_channel_name_task(bot, stats_json, active_matches):
     logger.debug("beginning update_qm_bot_channel_name_task()")
-    global count
-    global total_count
     global RECENT_ACTIVE_PLAYERS
-    total_count = total_count + 1
-    if count == 10:
-        count = 0
-    else:
-        count += 1
-        return
     guilds = bot.guilds
     for server in guilds:
         ladder_abbrev_arr = None
@@ -55,7 +45,7 @@ async def update_qm_bot_channel_name_task(bot, stats_json, active_matches):
         if len(RECENT_ACTIVE_PLAYERS) >= 10:
             RECENT_ACTIVE_PLAYERS.pop(0)
         avg_val = (sum(RECENT_ACTIVE_PLAYERS) // len(RECENT_ACTIVE_PLAYERS)) + 1
-        logger.debug(f"count={count}, arr={str(RECENT_ACTIVE_PLAYERS)}, num_players={num_players}, avg={str(avg_val)}")
+        logger.debug(f"arr={str(RECENT_ACTIVE_PLAYERS)}, num_players={num_players}, avg={str(avg_val)}")
         new_channel_name = "ladder-bot-" + str(avg_val)
         try:
             await qm_bot_channel.edit(name=new_channel_name)
