@@ -98,14 +98,18 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
             player_name = player['playerName']
 
             twitch_profile = player.get('twitchProfile')
-            if not team_id or str(team_id) == "observer":
-                twitch_url = None
-                if twitch_profile:
-                    twitch_url = f"https://www.twitch.tv/{twitch_profile}"
-                if twitch_profile and twitch_url:
+            twitch_live_at_start = player.get('twitchLiveAtStart', False)
+            is_observer = not team_id or str(team_id) == "observer"
+
+            # Show Twitch link if player is live on Twitch or is an observer with a Twitch profile
+            if twitch_profile and (twitch_live_at_start or is_observer):
+                twitch_url = f"https://www.twitch.tv/{twitch_profile}"
+                if is_observer:
                     player_details = f"{color_emoji} {player_name} - Watch at: [{twitch_profile}]({twitch_url})\n"
                 else:
-                    player_details = f"{color_emoji} {player_name}\n"
+                    player_details = f"{color_emoji} {player_name} ({faction}) - Watch at: [{twitch_profile}]({twitch_url})\n"
+            elif is_observer:
+                player_details = f"{color_emoji} {player_name}\n"
             else:
                 player_details = f"{color_emoji} {player_name} ({faction})\n"
         
@@ -139,7 +143,16 @@ def create_1v1_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Embe
     for index, player in enumerate(match['players'], start=1):
         player_color = get_player_color_from_index(player['playerColor']).lower()
         color_emoji = player_color_to_emoji.get(player_color, "")  # fallback if color missing
-        player_string = f"{color_emoji} {player['playerName']} ({player['playerFaction']})"
+
+        twitch_profile = player.get('twitchProfile')
+        twitch_live_at_start = player.get('twitchLiveAtStart', False)
+
+        # Show Twitch link if player is live on Twitch
+        if twitch_profile and twitch_live_at_start:
+            twitch_url = f"https://www.twitch.tv/{twitch_profile}"
+            player_string = f"{color_emoji} {player['playerName']} ({player['playerFaction']}) - Watch at: [{twitch_profile}]({twitch_url})"
+        else:
+            player_string = f"{color_emoji} {player['playerName']} ({player['playerFaction']})"
 
         embed.add_field(
             name=f"Player {index}",
