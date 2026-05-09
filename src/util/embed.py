@@ -107,8 +107,8 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
             # Show Twitch link if player is live on Twitch or is an observer with a Twitch profile
             if twitch_profile and (twitch_live_at_start or is_observer):
                 twitch_url = f"https://www.twitch.tv/{twitch_profile}"
-                # Use "twitch" as link text if names are masked, otherwise use twitch_profile
-                twitch_link_text = "twitch" if names_masked else twitch_profile
+                # Use "twitch" as link text if names are masked, but always show full profile for observers
+                twitch_link_text = twitch_profile if is_observer else ("twitch" if names_masked else twitch_profile)
                 if is_observer:
                     player_details = f"{color_emoji} {player_name} - Watch at: [{twitch_link_text}]({twitch_url})\n"
                 else:
