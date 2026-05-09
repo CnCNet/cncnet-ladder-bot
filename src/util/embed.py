@@ -79,6 +79,9 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
 
     embed.set_thumbnail(url=match["mapUrl"])
 
+    # Check if names are masked
+    names_masked = match.get('namesMasked', False)
+
     # Group players by team
     teams = {}
     for player in match['players']:
@@ -104,15 +107,17 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
             # Show Twitch link if player is live on Twitch or is an observer with a Twitch profile
             if twitch_profile and (twitch_live_at_start or is_observer):
                 twitch_url = f"https://www.twitch.tv/{twitch_profile}"
+                # Use "twitch" as link text if names are masked, otherwise use twitch_profile
+                twitch_link_text = "twitch" if names_masked else twitch_profile
                 if is_observer:
-                    player_details = f"{color_emoji} {player_name} - Watch at: [{twitch_profile}]({twitch_url})\n"
+                    player_details = f"{color_emoji} {player_name} - Watch at: [{twitch_link_text}]({twitch_url})\n"
                 else:
-                    player_details = f"{color_emoji} {player_name} ({faction}) - Watch at: [{twitch_profile}]({twitch_url})\n"
+                    player_details = f"{color_emoji} {player_name} ({faction}) - Watch at: [{twitch_link_text}]({twitch_url})\n"
             elif is_observer:
                 player_details = f"{color_emoji} {player_name}\n"
             else:
                 player_details = f"{color_emoji} {player_name} ({faction})\n"
-        
+
             player_list += player_details
                 
         if not team_id or str(team_id).lower() == "observer":
@@ -140,6 +145,9 @@ def create_1v1_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Embe
 
     embed.set_thumbnail(url=match["mapUrl"])
 
+    # Check if names are masked
+    names_masked = match.get('namesMasked', False)
+
     for index, player in enumerate(match['players'], start=1):
         player_color = get_player_color_from_index(player['playerColor']).lower()
         color_emoji = player_color_to_emoji.get(player_color, "")  # fallback if color missing
@@ -150,7 +158,9 @@ def create_1v1_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Embe
         # Show Twitch link if player is live on Twitch
         if twitch_profile and twitch_live_at_start:
             twitch_url = f"https://www.twitch.tv/{twitch_profile}"
-            player_string = f"{color_emoji} {player['playerName']} ({player['playerFaction']}) - Watch at: [{twitch_profile}]({twitch_url})"
+            # Use "twitch" as link text if names are masked, otherwise use twitch_profile
+            twitch_link_text = "twitch" if names_masked else twitch_profile
+            player_string = f"{color_emoji} {player['playerName']} ({player['playerFaction']}) - Watch at: [{twitch_link_text}]({twitch_url})"
         else:
             player_string = f"{color_emoji} {player['playerName']} ({player['playerFaction']})"
 
