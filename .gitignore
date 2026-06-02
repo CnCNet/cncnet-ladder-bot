@@ -7,3 +7,4 @@ src/__pycache__/*
 
 # Project tracking documents
 PROJECT_IMPROVEMENTS.md
+/.claude/settings.local.json

@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+import time
 from src.util.logger import MyLogger
 
 logger = MyLogger("Candle")
@@ -33,10 +35,23 @@ async def candle(ctx, bot, player, ladder, ladders, cnc_api_client):
 
     wins = stats.get('wins', 0)
     losses = stats.get('losses', 0)
+    points = stats.get('points', 0)
     total_games = wins + losses
 
+    # Get current UTC date and start of day timestamp
+    now_utc = datetime.now(timezone.utc)
+    utc_date = now_utc.strftime('%Y-%m-%d')
+
+    # Calculate start of day (00:00 UTC) timestamp for Discord formatting
+    start_of_day = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_of_day_timestamp = int(start_of_day.timestamp())
+
+    # Discord timestamp formatting - shows "X hours ago" to indicate day progress
+    day_started_msg = f"<t:{start_of_day_timestamp}:R>"
+
     # Build the candle visualization
-    message = f"**{player}** on **{ladder_actual.upper()}** - Today's Candle:\n\n"
+    message = f"**{player}** on **{ladder_actual.upper()}** - Today's Candle ({utc_date} UTC)\n"
+    message += f"*Day started {day_started_msg}*\n\n"
 
     if total_games == 0:
         message += "🕯️ No games played today"
@@ -82,6 +97,7 @@ async def candle(ctx, bot, player, ladder, ladders, cnc_api_client):
 
         # Add stats summary
         win_rate = (wins / total_games * 100) if total_games > 0 else 0
-        message += f"\n📊 **{wins}W - {losses}L** ({win_rate:.1f}% WR)"
+        points_display = f"+{points}" if points >= 0 else str(points)
+        message += f"\n📊 **{wins}W - {losses}L** ({win_rate:.1f}% WR) | {points_display} points"
 
     await ctx.send(message)

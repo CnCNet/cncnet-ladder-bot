@@ -18,79 +18,206 @@ docker-compose up
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Run syntax checks
+find src -type f -name "*.py" -exec python -m py_compile {} +
+
+# Test imports
+python -c "from src.bot.bot import *; print('All imports successful!')"
 ```
 
 ## Architecture
 
-### Entry Point
-**src/bot/bot.py** - Main bot initialization and event loop. Sets up:
-- Discord bot with command prefix `!`
-- Three periodic tasks (30s, 10min, 8hr intervals)
-- Guild authorization checks (auto-leaves unauthorized servers)
-- Global CnCNet API client and ladder list
+### Class-Based Architecture
 
-### Core Components
+The bot uses a **component-based architecture** where the main `CnCNetBot` class coordinates several specialized managers:
 
-**Periodic Tasks** (using discord.py's `@tasks.loop`):
-1. `update_bot_channel` (30s) - Fetches and posts current QM stats/matches to bot channels
-2. `periodic_update_qm_bot_channel_name` (10min) - Updates channel name with rolling average player count
-3. `sync_qm_ranking_roles_loop` (8hr) - Syncs Discord roles based on ladder rankings (production only)
+**src/bot/bot.py** - `CnCNetBot` main controller:
+- Initializes all components: config, state, lifecycle, commands, tasks
+- Registers Discord event handlers (`on_ready`, `on_rate_limit`)
+- Orchestrates startup and shutdown
 
-**Task Files** (src/tasks/):
-- Tasks implement an `execute(bot, ...)` async function
-- Error handling with backoff logic for API failures
-- Admin notifications (@BURG_ID) after 10 consecutive failures
-- Log summaries sent to Discord via `send_file_to_channel()`
+**src/bot/config.py** - `BotConfig` dataclass:
+- Loads environment variables (token, DEBUG flag)
+- Defines task intervals (30s, 10min, 8hr)
+- Maintains authorized server list
 
-**CnCNet API Service** (src/svc/CnCNetApiSvc.py):
+**src/bot/bot_state.py** - `BotState` manager:
+- Holds shared state: `cnc_api_client`, `ladders` list
+- Initializes CnCNet API client
+- Loads ladder list from API
+
+**src/bot/lifecycle.py** - `BotLifecycle` manager:
+- Handles `on_ready` event initialization sequence
+- Checks/leaves unauthorized servers
+- Purges bot channels on startup
+- Syncs slash commands with Discord
+
+**src/bot/command_manager.py** - `CommandManager`:
+- Registers both prefix (`!command`) and slash (`/command`) commands
+- Provides autocomplete for slash commands (ladder dropdown)
+- Implements command logic: maps, candle, create_qm_roles, purge_bot_channel
+- Uses `SlashContext` adapter to unify prefix/slash command handling
+
+**src/bot/task_manager.py** - `TaskManager`:
+- Sets up all `@tasks.loop` background tasks with configurable intervals
+- Manages task lifecycle (start/stop)
+- Tasks:
+  - `update_bot_channel` (30s) - Posts QM stats/matches, increases to 90s on error
+  - `update_channel_name` (10min) - Updates channel name with rolling average player count
+  - `sync_roles` (8hr) - Syncs Discord roles with ladder rankings (skipped if DEBUG=true)
+  - `cleanup_duplicates` (10min) - Ensures only one message per bot channel
+
+**src/bot/slash_context.py** - `SlashContext` adapter:
+- Converts Discord `Interaction` to Context-like object
+- Allows slash commands to reuse prefix command implementations
+- Handles `send()` method for both initial response and followups
+
+### Core Services and Utilities
+
+**src/svc/cncnet_api_svc.py** - `CnCNetApiSvc` client:
 - Base URL: `https://ladder.cncnet.org`
 - 20-second timeout on all requests
 - Returns `Exception` objects on failure (not raised) - check with `is_error(result)`
-- Key endpoints: stats, active_matches, rankings, maps, player daily stats
+- Methods: `fetch_stats()`, `active_matches()`, `fetch_rankings()`, `fetch_maps()`, `fetch_player_daily_stats()`
 
-**Discord Server Configuration** (src/constants/Constants.py):
-- `DISCORDS` dict maps server IDs to their ladder configurations
-- Each server has specific `qm_bot_channel_id` and `ladders` list
-- Bot only operates in 4 authorized servers (YR, CnCNet, Blitz, Dev)
+**src/constants/constants.py**:
+- `DISCORDS` dict maps server IDs to configurations (`qm_bot_channel_id`, `ladders` list)
+- Authorized servers: YR, CnCNet, Blitz, Dev
+- `QM_BOT_CHANNEL_NAME = "ladder-bot"`
 
-### Important Patterns
+**src/util/utils.py** - Helper functions:
+- `is_error(obj)` - Check if API response is Exception
+- `get_exception_msg(e)` - Format exception details
+- `send_message_to_log_channel(bot, msg)` - Send to dev discord #bot-logs
+- `send_file_to_channel(bot, filename, content)` - Send log files when message too long
 
-**Message Caching**: `GetActiveMatches.py` caches message IDs to edit existing messages instead of creating new ones, reducing API calls.
+**src/util/logger.py** - `MyLogger` class:
+- Rotating file handlers (10MB, 3 backups)
+- Dual logs: `logs/debug.log` and `logs/info.log`
+- Each module creates named logger: `MyLogger("module_name")`
 
-**Error Handling**:
-- Use `is_error(result)` to check API responses
-- Format errors with `get_exception_msg(e)`
-- Send to log channel via `send_message_to_log_channel(bot, msg)`
+### Task Implementations
 
-**Role Syncing** (sync_qm_ranking_roles_task.py):
-- Only processes YR Discord server
+**src/tasks/update_channel_bot_task.py**:
+- Main display logic for QM statistics
+- Fetches stats/matches per ladder and posts to configured channels
+- Uses `get_active_matches.py` for match embeds with message caching
+
+**src/tasks/update_qm_bot_channel_name_task.py**:
+- Updates channel name with rolling average player count
+- Format: `ladder-bot-[avg-players]`
+
+**src/tasks/sync_qm_ranking_roles_task.py**:
+- Only runs on YR Discord server (production only, skipped if DEBUG=true)
 - Removes old QM roles matching patterns in `QM_ROLE_PATTERNS`
 - Assigns new roles: Rank 1, Top 3, Top 5, Top 10, Top 25, Top 50
 - Supports ladders: RA2, YR, BLITZ-2V2, RA2-2V2
 - Never removes "champion" roles
 
-**Logging**:
-- Custom `MyLogger` class with rotating file handlers (10MB, 3 backups)
-- Dual logs: `logs/debug.log` and `logs/info.log`
-- Each module has its own named logger
+**src/tasks/cleanup_duplicate_messages_task.py**:
+- Ensures only one message exists per bot channel
+- Deletes duplicate messages if found
+
+### Command Implementations
+
+**src/commands/get_maps.py** - Display current QM map pool for a ladder
+
+**src/commands/candle.py** - Show player's daily win/loss candle chart
+
+**src/commands/create_qm_roles.py** - Create Discord roles for ladder rankings (admin only)
+
+**src/commands/get_active_matches.py** - Live match tracking with message caching (edits existing messages instead of creating new ones to reduce API calls)
+
+## Important Patterns
+
+**Slash Command Autocomplete**: The `CommandManager._ladder_autocomplete()` method provides dropdown suggestions filtered by user input (max 25 choices per Discord limits).
+
+**Error Handling**:
+- Always check API responses: `is_error(result)`
+- Format errors: `get_exception_msg(e)`
+- Send to log channel: `send_message_to_log_channel(bot, msg)`
+- Tasks have error counters with admin notifications after 10 consecutive failures
+
+**Message Management**:
+- Commands use `SlashContext` adapter to work with both prefix and slash commands
+- Long messages (>2000 chars) are sent as files via `send_file_to_channel()`
+- Bot purges channels on startup for fresh state
+
+**Task Interval Adjustment**:
+- `update_bot_channel` increases from 30s to 90s on error, restores to 30s on success
+- Prevents hammering API during outages
 
 ## Environment Setup
 
-Create `.env` file in project root:
+Create `src/.env` file:
 ```
-DISCORD_CLIENT_SECRET=[your-bot-token]
-DEBUG=false  # Optional: set to "true" to skip role sync task
+DISCORD_CLIENT_SECRET="your-discord-bot-token"
+DEBUG=true  # Set to "false" in production to enable role sync task
 ```
 
 ## Supported Ladders
 
 d2k, ra, ra-2v2, ra2, ra2-2v2, yr, blitz, blitz-2v2
 
-## Key Files to Understand
+## Testing and Demo Scripts
 
-- **src/bot/bot.py** - Bot lifecycle and task scheduling
-- **src/tasks/update_channel_bot_task.py** - Main display logic for QM info
-- **src/commands/GetActiveMatches.py** - Match embed creation and caching
-- **src/svc/CnCNetApiSvc.py** - All CnCNet API interactions
-- **src/constants/Constants.py** - Server configurations and IDs
-- **src/util/Utils.py** - Helper functions for messaging and error handling
+**Location**: `src/adhoc/` directory is used for ad-hoc testing and demonstration scripts
+
+**Creating Demos**: When creating demo or test scripts:
+- Prefer standalone scripts that don't require full Discord.py installation
+- Handle console encoding gracefully on Windows (cp1252 doesn't support emojis)
+- Replace emoji output with `[TEXT]` representations for console compatibility
+- Use `src/adhoc/` directory for all demo/testing scripts
+
+**Example demos**:
+- `src/adhoc/demo_candle_output.py` - Shows candle command output with various scenarios
+- `src/adhoc/demo_fetch_active_qms_output.py` - Demonstrates active match display format
+
+## Development Environment Notes
+
+This project is typically developed on **Windows using bash/Git Bash**:
+
+**Command Guidelines**:
+- Always use Unix/bash commands: `rm` (not `del`), `cp` (not `copy`)
+- Use `/dev/null` for output redirection (not `nul`)
+- Paths work with both forward slashes and backslashes in bash on Windows
+- Windows console encoding is cp1252 - emojis may not display correctly
+
+**Common Pitfalls**:
+- Don't use `2>nul` (creates a file called "nul"), use `2>/dev/null`
+- Don't mix Windows CMD commands in bash scripts
+
+## Key Files Reference
+
+**Core Architecture:**
+- `src/bot/bot.py` - Main `CnCNetBot` controller
+- `src/bot/config.py` - Configuration management
+- `src/bot/bot_state.py` - Shared state management
+- `src/bot/lifecycle.py` - Initialization and lifecycle events
+- `src/bot/command_manager.py` - Command registration and handling
+- `src/bot/task_manager.py` - Background task management
+- `src/bot/slash_context.py` - Slash command adapter
+
+**Services:**
+- `src/svc/cncnet_api_svc.py` - CnCNet API client
+
+**Tasks:**
+- `src/tasks/update_channel_bot_task.py` - QM stats display
+- `src/tasks/update_qm_bot_channel_name_task.py` - Channel name updates
+- `src/tasks/sync_qm_ranking_roles_task.py` - Role synchronization
+- `src/tasks/cleanup_duplicate_messages_task.py` - Message cleanup
+
+**Commands:**
+- `src/commands/get_maps.py` - Map pool display
+- `src/commands/candle.py` - Player statistics
+- `src/commands/create_qm_roles.py` - Role creation
+- `src/commands/get_active_matches.py` - Live match tracking
+
+**Configuration:**
+- `src/constants/constants.py` - Server IDs and configurations
+
+**Utilities:**
+- `src/util/utils.py` - Helper functions
+- `src/util/logger.py` - Logging system
+- `src/util/embed.py` - Discord embed builders
