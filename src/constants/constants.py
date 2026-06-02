@@ -27,4 +27,7 @@ DISCORDS = {
 
 QM_BOT_CHANNEL_NAME = "ladder-bot"
 
+# UI interaction settings
+BUTTON_COOLDOWN_SECONDS = 10  # Per-button, per-user cooldown for interactive commands
+
 CNCNET_LADDER_DEV_DISCORD_BOT_LOGS_ID = 1240364999931854999  # cncnet ladder development discord, #bot-logs channel ID

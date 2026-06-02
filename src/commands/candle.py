@@ -3,6 +3,7 @@ import time
 import discord
 from discord.ui import View, Button
 from src.util.logger import MyLogger
+from src.constants.constants import BUTTON_COOLDOWN_SECONDS
 
 logger = MyLogger("Candle")
 
@@ -101,15 +102,39 @@ def build_candle_message(player: str, ladder: str, wins: int, losses: int, point
 class CandleView(View):
     """Interactive view with Daily/Monthly buttons for candle command."""
 
-    def __init__(self, player: str, ladder: str, cnc_api_client, initial_period: str = "daily"):
+    def __init__(self, player: str, ladder: str, cnc_api_client, initial_period: str = "daily", cooldown_seconds: int = BUTTON_COOLDOWN_SECONDS):
         super().__init__(timeout=300)  # 5 minute timeout
         self.player = player
         self.ladder = ladder
         self.cnc_api_client = cnc_api_client
         self.current_period = initial_period
+        self.cooldown_seconds = cooldown_seconds
+        self.last_interaction_time = {}  # (user_id, button_id) -> timestamp
 
         # Update button styles based on current period
         self.update_button_styles()
+
+    def is_on_cooldown(self, user_id: int, button_id: str) -> tuple[bool, float]:
+        """
+        Check if user is on cooldown for a specific button.
+
+        Args:
+            user_id: Discord user ID
+            button_id: Button custom_id ("daily" or "monthly")
+
+        Returns:
+            Tuple of (is_on_cooldown: bool, remaining_seconds: float)
+        """
+        key = (user_id, button_id)
+        if key not in self.last_interaction_time:
+            return False, 0.0
+
+        elapsed = time.time() - self.last_interaction_time[key]
+        remaining = self.cooldown_seconds - elapsed
+
+        if remaining > 0:
+            return True, remaining
+        return False, 0.0
 
     def update_button_styles(self):
         """Update button styles to show which period is active."""
@@ -123,6 +148,18 @@ class CandleView(View):
     @discord.ui.button(label="Daily", style=discord.ButtonStyle.primary, custom_id="daily")
     async def daily_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Handle Daily button click."""
+        # Check cooldown for this specific button
+        on_cooldown, remaining = self.is_on_cooldown(interaction.user.id, "daily")
+        if on_cooldown:
+            await interaction.response.send_message(
+                f"Please wait {remaining:.0f} seconds before clicking Daily again.",
+                ephemeral=True
+            )
+            return
+
+        # Update last interaction time for this button
+        self.last_interaction_time[(interaction.user.id, "daily")] = time.time()
+
         await interaction.response.defer()
 
         # Fetch daily stats
@@ -153,6 +190,18 @@ class CandleView(View):
     @discord.ui.button(label="Monthly", style=discord.ButtonStyle.secondary, custom_id="monthly")
     async def monthly_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Handle Monthly button click."""
+        # Check cooldown for this specific button
+        on_cooldown, remaining = self.is_on_cooldown(interaction.user.id, "monthly")
+        if on_cooldown:
+            await interaction.response.send_message(
+                f"Please wait {remaining:.0f} seconds before clicking Monthly again.",
+                ephemeral=True
+            )
+            return
+
+        # Update last interaction time for this button
+        self.last_interaction_time[(interaction.user.id, "monthly")] = time.time()
+
         await interaction.response.defer()
 
         # Fetch monthly stats

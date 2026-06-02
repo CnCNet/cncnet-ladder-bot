@@ -85,6 +85,7 @@ The bot uses a **component-based architecture** where the main `CnCNetBot` class
 - `DISCORDS` dict maps server IDs to configurations (`qm_bot_channel_id`, `ladders` list)
 - Authorized servers: YR, CnCNet, Blitz, Dev
 - `QM_BOT_CHANNEL_NAME = "ladder-bot"`
+- `BUTTON_COOLDOWN_SECONDS = 10` - Per-button, per-user cooldown for interactive UI components
 
 **src/util/utils.py** - Helper functions:
 - `is_error(obj)` - Check if API response is Exception
@@ -129,6 +130,7 @@ The bot uses a **component-based architecture** where the main `CnCNetBot` class
 - Daily view: current UTC day stats with "Day started X hours ago"
 - Monthly view: current calendar month stats with month name
 - 5-minute button timeout, buttons fetch fresh data on click
+- 10-second per-button, per-user cooldown to prevent API spam (each button has independent cooldown)
 - Displays wins, losses, win rate, and points gained/lost
 - Auto-scales candle height for high game counts (max 15 blocks)
 
@@ -157,6 +159,9 @@ The bot uses a **component-based architecture** where the main `CnCNetBot` class
 - Views have configurable timeouts (default 300 seconds / 5 minutes)
 - Button styles: `discord.ButtonStyle.primary` (blue/active), `discord.ButtonStyle.secondary` (gray/inactive)
 - Update buttons with `interaction.edit_original_response(content=..., view=...)`
+- Implement per-button, per-user cooldowns to prevent spam (use `BUTTON_COOLDOWN_SECONDS` from constants)
+- Track cooldowns using `(user_id, button_id)` tuple keys for independent button cooldowns
+- Cooldown messages sent as ephemeral (only visible to clicking user)
 
 **Task Interval Adjustment**:
 - `update_bot_channel` increases from 30s to 90s on error, restores to 30s on success
