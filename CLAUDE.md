@@ -79,7 +79,7 @@ The bot uses a **component-based architecture** where the main `CnCNetBot` class
 - Base URL: `https://ladder.cncnet.org`
 - 20-second timeout on all requests
 - Returns `Exception` objects on failure (not raised) - check with `is_error(result)`
-- Methods: `fetch_stats()`, `active_matches()`, `fetch_rankings()`, `fetch_maps()`, `fetch_player_daily_stats()`
+- Methods: `fetch_stats()`, `active_matches()`, `fetch_rankings()`, `fetch_maps()`, `fetch_player_daily_stats()`, `fetch_player_monthly_stats()`
 
 **src/constants/constants.py**:
 - `DISCORDS` dict maps server IDs to configurations (`qm_bot_channel_id`, `ladders` list)
@@ -123,7 +123,14 @@ The bot uses a **component-based architecture** where the main `CnCNetBot` class
 
 **src/commands/get_maps.py** - Display current QM map pool for a ladder
 
-**src/commands/candle.py** - Show player's daily win/loss candle chart
+**src/commands/candle.py** - Interactive player statistics with Daily/Monthly toggle:
+- Shows win/loss candle chart with visual blocks (red for losses, green for wins)
+- Discord UI View with two interactive buttons: "Daily" and "Monthly"
+- Daily view: current UTC day stats with "Day started X hours ago"
+- Monthly view: current calendar month stats with month name
+- 5-minute button timeout, buttons fetch fresh data on click
+- Displays wins, losses, win rate, and points gained/lost
+- Auto-scales candle height for high game counts (max 15 blocks)
 
 **src/commands/create_qm_roles.py** - Create Discord roles for ladder rankings (admin only)
 
@@ -143,6 +150,13 @@ The bot uses a **component-based architecture** where the main `CnCNetBot` class
 - Commands use `SlashContext` adapter to work with both prefix and slash commands
 - Long messages (>2000 chars) are sent as files via `send_file_to_channel()`
 - Bot purges channels on startup for fresh state
+
+**Interactive UI Components**:
+- Use `discord.ui.View` for interactive buttons (e.g., candle command)
+- Button interactions use `discord.ui.button` decorator
+- Views have configurable timeouts (default 300 seconds / 5 minutes)
+- Button styles: `discord.ButtonStyle.primary` (blue/active), `discord.ButtonStyle.secondary` (gray/inactive)
+- Update buttons with `interaction.edit_original_response(content=..., view=...)`
 
 **Task Interval Adjustment**:
 - `update_bot_channel` increases from 30s to 90s on error, restores to 30s on success
@@ -171,7 +185,8 @@ d2k, ra, ra-2v2, ra2, ra2-2v2, yr, blitz, blitz-2v2
 - Use `src/adhoc/` directory for all demo/testing scripts
 
 **Example demos**:
-- `src/adhoc/demo_candle_output.py` - Shows candle command output with various scenarios
+- `src/adhoc/demo_candle_output.py` - Shows candle command output with various scenarios (legacy version)
+- `src/adhoc/demo_candle_with_buttons.py` - Demonstrates new interactive candle with Daily/Monthly buttons
 - `src/adhoc/demo_fetch_active_qms_output.py` - Demonstrates active match display format
 
 ## Development Environment Notes
@@ -220,4 +235,6 @@ This project is typically developed on **Windows using bash/Git Bash**:
 **Utilities:**
 - `src/util/utils.py` - Helper functions
 - `src/util/logger.py` - Logging system
-- `src/util/embed.py` - Discord embed builders
+- `src/util/embed.py` - Discord embed builders for match displays
+  - Always shows full Twitch profile names for streaming players (no obfuscation)
+  - Supports both 1v1 and 2v2 match embeds with player colors, factions, and live stream links

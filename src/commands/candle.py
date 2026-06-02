@@ -1,60 +1,55 @@
 from datetime import datetime, timezone
 import time
+import discord
+from discord.ui import View, Button
 from src.util.logger import MyLogger
 
 logger = MyLogger("Candle")
 
 
-async def candle(ctx, bot, player, ladder, ladders, cnc_api_client):
-    """Check a player's daily wins and losses for a specific ladder."""
-    if not player:
-        await ctx.send("Usage: `!candle <player> <ladder>`")
-        return
+def build_candle_message(player: str, ladder: str, wins: int, losses: int, points: int, period: str = "daily"):
+    """
+    Build the candle visualization message.
 
-    # Case-insensitive ladder matching
-    ladder_lower = ladder.lower()
-    ladder_map = {l.lower(): l for l in ladders}
+    Args:
+        player: Player name
+        ladder: Ladder name
+        wins: Number of wins
+        losses: Number of losses
+        points: Points gained/lost
+        period: "daily" or "monthly"
 
-    if ladder_lower not in ladder_map:
-        await ctx.send(f"Invalid ladder '{ladder}'. Available ladders: {', '.join(ladders)}")
-        return
-
-    # Use the exact ladder name from the API
-    ladder_actual = ladder_map[ladder_lower]
-    stats = cnc_api_client.fetch_player_daily_stats(ladder_actual, player)
-
-    if isinstance(stats, Exception):
-        logger.error(f"Exception fetching daily stats for {player} on {ladder_actual}: {type(stats).__name__}, {str(stats)}")
-        await ctx.send(f"Error: Could not fetch stats for {player} on {ladder_actual.upper()}")
-        return
-
-    if "error" in stats:
-        logger.error(f"API error fetching daily stats for {player} on {ladder_actual}: {stats.get('error')}")
-        await ctx.send(f"Error: Could not fetch stats for {player} on {ladder_actual.upper()}")
-        return
-
-    wins = stats.get('wins', 0)
-    losses = stats.get('losses', 0)
-    points = stats.get('points', 0)
+    Returns:
+        Formatted candle message string
+    """
     total_games = wins + losses
 
-    # Get current UTC date and start of day timestamp
+    # Get current UTC date and time info
     now_utc = datetime.now(timezone.utc)
     utc_date = now_utc.strftime('%Y-%m-%d')
 
-    # Calculate start of day (00:00 UTC) timestamp for Discord formatting
-    start_of_day = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
-    start_of_day_timestamp = int(start_of_day.timestamp())
+    # Build the header based on period
+    if period == "daily":
+        # Calculate start of day (00:00 UTC) timestamp for Discord formatting
+        start_of_period = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+        start_of_period_timestamp = int(start_of_period.timestamp())
+        period_started_msg = f"<t:{start_of_period_timestamp}:R>"
 
-    # Discord timestamp formatting - shows "X hours ago" to indicate day progress
-    day_started_msg = f"<t:{start_of_day_timestamp}:R>"
+        message = f"**{player}** on **{ladder.upper()}** - Today's Candle ({utc_date} UTC)\n"
+        message += f"*Day started {period_started_msg}*\n\n"
+    else:  # monthly
+        # Calculate start of month timestamp
+        start_of_month = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start_of_month_timestamp = int(start_of_month.timestamp())
+        period_started_msg = f"<t:{start_of_month_timestamp}:R>"
+        month_name = now_utc.strftime('%B %Y')
 
-    # Build the candle visualization
-    message = f"**{player}** on **{ladder_actual.upper()}** - Today's Candle ({utc_date} UTC)\n"
-    message += f"*Day started {day_started_msg}*\n\n"
+        message = f"**{player}** on **{ladder.upper()}** - This Month's Candle ({month_name})\n"
+        message += f"*Month started {period_started_msg}*\n\n"
 
     if total_games == 0:
-        message += "🕯️ No games played today"
+        no_games_msg = "today" if period == "daily" else "this month"
+        message += f"🕯️ No games played {no_games_msg}"
     else:
         # Maximum candle height (excluding flame and stats)
         max_candle_height = 15
@@ -100,4 +95,131 @@ async def candle(ctx, bot, player, ladder, ladders, cnc_api_client):
         points_display = f"+{points}" if points >= 0 else str(points)
         message += f"\n📊 **{wins}W - {losses}L** ({win_rate:.1f}% WR) | {points_display} points"
 
-    await ctx.send(message)
+    return message
+
+
+class CandleView(View):
+    """Interactive view with Daily/Monthly buttons for candle command."""
+
+    def __init__(self, player: str, ladder: str, cnc_api_client, initial_period: str = "daily"):
+        super().__init__(timeout=300)  # 5 minute timeout
+        self.player = player
+        self.ladder = ladder
+        self.cnc_api_client = cnc_api_client
+        self.current_period = initial_period
+
+        # Update button styles based on current period
+        self.update_button_styles()
+
+    def update_button_styles(self):
+        """Update button styles to show which period is active."""
+        for child in self.children:
+            if isinstance(child, Button):
+                if child.custom_id == "daily":
+                    child.style = discord.ButtonStyle.primary if self.current_period == "daily" else discord.ButtonStyle.secondary
+                elif child.custom_id == "monthly":
+                    child.style = discord.ButtonStyle.primary if self.current_period == "monthly" else discord.ButtonStyle.secondary
+
+    @discord.ui.button(label="Daily", style=discord.ButtonStyle.primary, custom_id="daily")
+    async def daily_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Handle Daily button click."""
+        await interaction.response.defer()
+
+        # Fetch daily stats
+        stats = self.cnc_api_client.fetch_player_daily_stats(self.ladder, self.player)
+
+        if isinstance(stats, Exception):
+            logger.error(f"Exception fetching daily stats for {self.player} on {self.ladder}: {type(stats).__name__}, {str(stats)}")
+            await interaction.followup.send(f"Error: Could not fetch daily stats for {self.player}", ephemeral=True)
+            return
+
+        if "error" in stats:
+            logger.error(f"API error fetching daily stats for {self.player} on {self.ladder}: {stats.get('error')}")
+            await interaction.followup.send(f"Error: Could not fetch daily stats for {self.player}", ephemeral=True)
+            return
+
+        wins = stats.get('wins', 0)
+        losses = stats.get('losses', 0)
+        points = stats.get('points', 0)
+
+        # Update current period and button styles
+        self.current_period = "daily"
+        self.update_button_styles()
+
+        # Build and send updated message
+        message = build_candle_message(self.player, self.ladder, wins, losses, points, "daily")
+        await interaction.edit_original_response(content=message, view=self)
+
+    @discord.ui.button(label="Monthly", style=discord.ButtonStyle.secondary, custom_id="monthly")
+    async def monthly_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Handle Monthly button click."""
+        await interaction.response.defer()
+
+        # Fetch monthly stats
+        stats = self.cnc_api_client.fetch_player_monthly_stats(self.ladder, self.player)
+
+        if isinstance(stats, Exception):
+            logger.error(f"Exception fetching monthly stats for {self.player} on {self.ladder}: {type(stats).__name__}, {str(stats)}")
+            await interaction.followup.send(f"Error: Could not fetch monthly stats for {self.player}", ephemeral=True)
+            return
+
+        if "error" in stats:
+            logger.error(f"API error fetching monthly stats for {self.player} on {self.ladder}: {stats.get('error')}")
+            await interaction.followup.send(f"Error: Could not fetch monthly stats for {self.player}", ephemeral=True)
+            return
+
+        wins = stats.get('wins', 0)
+        losses = stats.get('losses', 0)
+        points = stats.get('points', 0)
+
+        # Update current period and button styles
+        self.current_period = "monthly"
+        self.update_button_styles()
+
+        # Build and send updated message
+        message = build_candle_message(self.player, self.ladder, wins, losses, points, "monthly")
+        await interaction.edit_original_response(content=message, view=self)
+
+
+async def candle(ctx, bot, player, ladder, ladders, cnc_api_client):
+    """Check a player's daily wins and losses for a specific ladder with interactive period selection."""
+    if not player:
+        await ctx.send("Usage: `!candle <player> <ladder>`")
+        return
+
+    # Case-insensitive ladder matching
+    ladder_lower = ladder.lower()
+    ladder_map = {l.lower(): l for l in ladders}
+
+    if ladder_lower not in ladder_map:
+        await ctx.send(f"Invalid ladder '{ladder}'. Available ladders: {', '.join(ladders)}")
+        return
+
+    # Use the exact ladder name from the API
+    ladder_actual = ladder_map[ladder_lower]
+
+    # Fetch initial daily stats
+    stats = cnc_api_client.fetch_player_daily_stats(ladder_actual, player)
+
+    if isinstance(stats, Exception):
+        logger.error(f"Exception fetching daily stats for {player} on {ladder_actual}: {type(stats).__name__}, {str(stats)}")
+        await ctx.send(f"Error: Could not fetch stats for {player} on {ladder_actual.upper()}")
+        return
+
+    if "error" in stats:
+        logger.error(f"API error fetching daily stats for {player} on {ladder_actual}: {stats.get('error')}")
+        await ctx.send(f"Error: Could not fetch stats for {player} on {ladder_actual.upper()}")
+        return
+
+    wins = stats.get('wins', 0)
+    losses = stats.get('losses', 0)
+    points = stats.get('points', 0)
+
+    # Build the initial candle message (daily view)
+    message = build_candle_message(player, ladder_actual, wins, losses, points, "daily")
+
+    # Create the interactive view with buttons
+    view = CandleView(player, ladder_actual, cnc_api_client, initial_period="daily")
+
+    # Send message with interactive buttons
+    await ctx.send(message, view=view)

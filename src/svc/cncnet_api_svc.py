@@ -53,3 +53,7 @@ class CnCNetApiSvc:
         url = f"{self.host}/api/v1/ladder/{ladder}/player/{player}/today"
         return self.get_json(url)
 
+    def fetch_player_monthly_stats(self, ladder, player):
+        url = f"{self.host}/api/v1/ladder/{ladder}/player/{player}/month"
+        return self.get_json(url)
+
