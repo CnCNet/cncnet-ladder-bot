@@ -41,18 +41,37 @@ RECENT_ACTIVE_PLAYERS = []
 logger = MyLogger("update_channel_bot_task")
 count = 0
 total_count = 0
+_ladder_refresh_attempted = False  # Track if we've already tried to refresh this session
 
 
-async def execute(bot, ladders: list, cnc_api_client: CnCNetApiSvc, debug) -> dict:
+async def execute(bot, ladders: list, cnc_api_client: CnCNetApiSvc, debug, bot_state=None) -> dict:
     logger.debug("Starting update_channel_bot_task()...")
-    global error_count
+    global error_count, _ladder_refresh_attempted
 
     try:
         if not ladders:
             logger.error("Error: No ladders available")
-            msg = "Error: No ladders available"
-            await send_message_to_log_channel(bot=bot, msg=msg)
-            return {"error": "Failed to fetch stats", "status": "failed"}
+
+            # Try to refresh the ladder list if we haven't already attempted it
+            if bot_state and not _ladder_refresh_attempted:
+                logger.log("Attempting to refresh ladder list...")
+                _ladder_refresh_attempted = True
+                success = await bot_state.refresh_ladders_async()
+
+                if success:
+                    logger.log("Successfully refreshed ladder list, continuing with task")
+                    # Reset the flag so we can try again if it fails later
+                    _ladder_refresh_attempted = False
+                    return {"error": None, "status": "recovered"}
+                else:
+                    logger.error("Failed to refresh ladder list")
+                    msg = "Error: No ladders available and refresh failed. Will retry via periodic task."
+                    await send_message_to_log_channel(bot=bot, msg=msg)
+                    return {"error": "Failed to fetch stats", "status": "failed"}
+            else:
+                msg = "Error: No ladders available"
+                await send_message_to_log_channel(bot=bot, msg=msg)
+                return {"error": "Failed to fetch stats", "status": "failed"}
 
         stats_json = cnc_api_client.fetch_stats("all")
         if is_error(stats_json):

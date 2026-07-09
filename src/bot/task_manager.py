@@ -44,7 +44,8 @@ class TaskManager:
                 bot=self.bot,
                 ladders=self.state.ladders,
                 cnc_api_client=self.state.cnc_api_client,
-                debug=self.config.debug
+                debug=self.config.debug,
+                bot_state=self.state
             )
 
             if response.get("error"):
@@ -96,11 +97,28 @@ class TaskManager:
                 debug=self.config.debug
             )
 
+        @tasks.loop(hours=self.config.refresh_ladders_interval_hours)
+        async def refresh_ladders() -> None:
+            """
+            Periodically refresh the ladder list from the API.
+            Runs every 4 hours to ensure ladder list stays current.
+            """
+            # Skip the first execution - ladders are loaded in on_ready
+            if not hasattr(refresh_ladders, "_has_run"):
+                refresh_ladders._has_run = True
+                return
+
+            logger.log("Running periodic ladder refresh...")
+            success = await self.state.refresh_ladders_async()
+            if not success:
+                logger.error("Periodic ladder refresh failed, will retry next interval")
+
         # Store task references
         self.update_bot_channel_task = update_bot_channel
         self.update_channel_name_task = update_channel_name
         self.sync_roles_task = sync_roles
         self.cleanup_duplicates_task = cleanup_duplicates
+        self.refresh_ladders_task = refresh_ladders
 
     def start_all_tasks(self) -> None:
         """
@@ -111,6 +129,7 @@ class TaskManager:
         self.update_bot_channel_task.start()
         self.update_channel_name_task.start()
         self.cleanup_duplicates_task.start()
+        self.refresh_ladders_task.start()
 
         if not self.config.debug:
             self.sync_roles_task.start()
@@ -127,6 +146,9 @@ class TaskManager:
 
         if self.cleanup_duplicates_task.is_running():
             self.cleanup_duplicates_task.cancel()
+
+        if self.refresh_ladders_task.is_running():
+            self.refresh_ladders_task.cancel()
 
         if self.sync_roles_task.is_running():
             self.sync_roles_task.cancel()

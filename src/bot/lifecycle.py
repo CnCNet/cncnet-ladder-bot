@@ -41,7 +41,18 @@ class BotLifecycle:
         await self.check_authorized_servers()
         await self.purge_bot_channels()
         self.state.initialize_api_client()
-        self.state.load_ladders()
+
+        # Try to load ladders with retry logic
+        success = self.state.load_ladders()
+        if not success:
+            error_msg = (
+                "**WARNING:** Failed to load ladder list during initialization. "
+                "Bot will continue running and retry via background task every 4 hours. "
+                "Some commands may not work until ladder list is loaded."
+            )
+            logger.error(error_msg)
+            await send_message_to_log_channel(self.bot, error_msg)
+
         await self.sync_slash_commands()
 
     async def check_authorized_servers(self) -> None:
