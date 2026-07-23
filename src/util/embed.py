@@ -3,7 +3,7 @@ import discord
 player_color_to_emoji = {
     "red": "🔴",
     "blue": "🔵",
-    "light blue": ":Cyan:",
+    "light blue": ":light_blue:",
     "green": "🟢",
     "yellow": "🟡",
     "purple": "🟣",
@@ -142,7 +142,22 @@ def create_1v1_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Embe
 
     embed.set_thumbnail(url=match["mapUrl"])
 
-    for index, player in enumerate(match['players'], start=1):
+    # Separate observers from regular players
+    observers = []
+    players = []
+
+    for player in match['players']:
+        player_team = player.get('playerTeam')
+        player_faction = player.get('playerFaction')
+
+        # Detect observer by team field or faction
+        if player_team == 'observer' or player_faction == 'Observer':
+            observers.append(player)
+        else:
+            players.append(player)
+
+    # Add regular players (numbered sequentially, excluding observers)
+    for index, player in enumerate(players, start=1):
         player_color = get_player_color_from_index(player['playerColor']).lower()
         color_emoji = player_color_to_emoji.get(player_color, "")  # fallback if color missing
 
@@ -161,6 +176,32 @@ def create_1v1_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Embe
         embed.add_field(
             name=f"Player {index}",
             value=player_string,
+            inline=False
+        )
+
+    # Add observers section (similar to team match logic)
+    if observers:
+        observer_list = ""
+        for player in observers:
+            player_color = get_player_color_from_index(player['playerColor']).lower()
+            color_emoji = player_color_to_emoji.get(player_color, "")
+            player_name = player['playerName']
+
+            twitch_profile = player.get('twitchProfile')
+
+            # Show Twitch link if observer has profile (observers are public, no live check needed)
+            if twitch_profile:
+                twitch_url = f"https://www.twitch.tv/{twitch_profile}"
+                twitch_link_text = twitch_profile
+                player_details = f"{color_emoji} {player_name} - Watch at: [{twitch_link_text}]({twitch_url})\n"
+            else:
+                player_details = f"{color_emoji} {player_name}\n"
+
+            observer_list += player_details
+
+        embed.add_field(
+            name="Observer",
+            value=observer_list,
             inline=False
         )
 
