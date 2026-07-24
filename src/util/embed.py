@@ -30,6 +30,49 @@ game_color = {
 }
 
 
+def _create_base_embed(ladder_abbrev: str, match_data: dict) -> discord.Embed:
+    """Create the base embed with title, description, and thumbnail."""
+    embed = discord.Embed(
+        title=ladder_abbrev.upper(),
+        description=f"{match_data['mapName']}\n{match_data['gameDuration']}",
+        color=game_color.get(ladder_abbrev.lower(), discord.Color.light_gray())
+    )
+    embed.set_thumbnail(url=match_data["mapUrl"])
+    return embed
+
+
+def _format_player_string(player: dict, is_observer: bool) -> str:
+    """Format a player's display string with color emoji, faction, and Twitch link."""
+    player_name = player['playerName']
+    twitch_profile = player.get('twitchProfile')
+    twitch_live_at_start = player.get('twitchLiveAtStart', False)
+
+    # Observers don't show color emoji or faction
+    if is_observer:
+        color_emoji = ""
+        faction = None
+        show_twitch = bool(twitch_profile)  # Show Twitch if profile exists (no live check)
+    else:
+        player_color = get_player_color_from_index(player['playerColor']).lower()
+        color_emoji = player_color_to_emoji.get(player_color, "")
+        faction = player['playerFaction']
+        show_twitch = bool(twitch_profile and twitch_live_at_start)  # Show Twitch only if live
+
+    # Build the player string
+    if show_twitch:
+        twitch_url = f"https://www.twitch.tv/{twitch_profile}"
+        twitch_link_text = twitch_profile
+        if is_observer:
+            return f"{player_name} - Watch at: [{twitch_link_text}]({twitch_url})"
+        else:
+            return f"{color_emoji} {player_name} ({faction}) - Watch at: [{twitch_link_text}]({twitch_url})"
+    else:
+        if is_observer:
+            return player_name
+        else:
+            return f"{color_emoji} {player_name} ({faction})"
+
+
 def create_embeds(ladder_abbrev: str, match_data: list) -> list:
     embeds = []
 
@@ -69,62 +112,30 @@ def get_player_color_from_index(color_index: int):
 
 
 def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Embed:
-    match = match_data
-
-    embed = discord.Embed(
-        title=ladder_abbrev.upper(),  # Ladder name as title
-        description=f"{match['mapName']}\n{match['gameDuration']}",  # Map name and duration on separate lines
-        color=game_color.get(ladder_abbrev.lower(), discord.Color.light_gray())
-    )
-
-    embed.set_thumbnail(url=match["mapUrl"])
+    embed = _create_base_embed(ladder_abbrev, match_data)
 
     # Group players by team
     teams = {}
-    for player in match['players']:
+    for player in match_data['players']:
         team_id = player['teamId']
-
         if team_id not in teams:
             teams[team_id] = []
         teams[team_id].append(player)
 
     # Add a field for each team
     for team_id, players in teams.items():
-        player_list = ""
+        is_observer = not team_id or str(team_id) == "observer"
+
+        player_list = []
         for player in players:
-            player_color = get_player_color_from_index(player['playerColor']).lower()
-            color_emoji = player_color_to_emoji.get(player_color, "")  # fallback if color missing
-            faction = player['playerFaction']
-            player_name = player['playerName']
+            player_string = _format_player_string(player, is_observer)
+            player_list.append(player_string)
 
-            twitch_profile = player.get('twitchProfile')
-            twitch_live_at_start = player.get('twitchLiveAtStart', False)
-            is_observer = not team_id or str(team_id) == "observer"
-
-            # Show Twitch link if player is live on Twitch or is an observer with a Twitch profile
-            if twitch_profile and (twitch_live_at_start or is_observer):
-                twitch_url = f"https://www.twitch.tv/{twitch_profile}"
-                # Always show full Twitch profile for streamers and observers (streaming is public)
-                twitch_link_text = twitch_profile
-                if is_observer:
-                    player_details = f"{color_emoji} {player_name} - Watch at: [{twitch_link_text}]({twitch_url})\n"
-                else:
-                    player_details = f"{color_emoji} {player_name} ({faction}) - Watch at: [{twitch_link_text}]({twitch_url})\n"
-            elif is_observer:
-                player_details = f"{color_emoji} {player_name}\n"
-            else:
-                player_details = f"{color_emoji} {player_name} ({faction})\n"
-
-            player_list += player_details
-                
-        if not team_id or str(team_id).lower() == "observer":
-            name = "Observer"
-        else:
-            name = f"Team {team_id}"
+        team_name = "Observer" if is_observer else f"Team {team_id}"
 
         embed.add_field(
-            name=name,
-            value=player_list,
+            name=team_name,
+            value="\n".join(player_list),
             inline=False
         )
 
@@ -132,21 +143,13 @@ def create_team_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Emb
 
 
 def create_1v1_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Embed:
-    match = match_data
-
-    embed = discord.Embed(
-        title=ladder_abbrev.upper(),  # Ladder name as title
-        description=f"{match['mapName']}\n{match['gameDuration']}",  # Map name and duration on separate lines
-        color=game_color.get(ladder_abbrev.lower(), discord.Color.light_gray())
-    )
-
-    embed.set_thumbnail(url=match["mapUrl"])
+    embed = _create_base_embed(ladder_abbrev, match_data)
 
     # Separate observers from regular players
     observers = []
     players = []
 
-    for player in match['players']:
+    for player in match_data['players']:
         player_team = player.get('playerTeam')
         player_faction = player.get('playerFaction')
 
@@ -158,20 +161,7 @@ def create_1v1_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Embe
 
     # Add regular players (numbered sequentially, excluding observers)
     for index, player in enumerate(players, start=1):
-        player_color = get_player_color_from_index(player['playerColor']).lower()
-        color_emoji = player_color_to_emoji.get(player_color, "")  # fallback if color missing
-
-        twitch_profile = player.get('twitchProfile')
-        twitch_live_at_start = player.get('twitchLiveAtStart', False)
-
-        # Show Twitch link if player is live on Twitch
-        if twitch_profile and twitch_live_at_start:
-            twitch_url = f"https://www.twitch.tv/{twitch_profile}"
-            # Always show full Twitch profile for streamers (streaming is public)
-            twitch_link_text = twitch_profile
-            player_string = f"{color_emoji} {player['playerName']} ({player['playerFaction']}) - Watch at: [{twitch_link_text}]({twitch_url})"
-        else:
-            player_string = f"{color_emoji} {player['playerName']} ({player['playerFaction']})"
+        player_string = _format_player_string(player, is_observer=False)
 
         embed.add_field(
             name=f"Player {index}",
@@ -179,29 +169,16 @@ def create_1v1_match_embed(ladder_abbrev: str, match_data: dict) -> discord.Embe
             inline=False
         )
 
-    # Add observers section (similar to team match logic)
+    # Add observers section
     if observers:
-        observer_list = ""
+        observer_list = []
         for player in observers:
-            player_color = get_player_color_from_index(player['playerColor']).lower()
-            color_emoji = player_color_to_emoji.get(player_color, "")
-            player_name = player['playerName']
-
-            twitch_profile = player.get('twitchProfile')
-
-            # Show Twitch link if observer has profile (observers are public, no live check needed)
-            if twitch_profile:
-                twitch_url = f"https://www.twitch.tv/{twitch_profile}"
-                twitch_link_text = twitch_profile
-                player_details = f"{color_emoji} {player_name} - Watch at: [{twitch_link_text}]({twitch_url})\n"
-            else:
-                player_details = f"{color_emoji} {player_name}\n"
-
-            observer_list += player_details
+            player_string = _format_player_string(player, is_observer=True)
+            observer_list.append(player_string)
 
         embed.add_field(
             name="Observer",
-            value=observer_list,
+            value="\n".join(observer_list),
             inline=False
         )
 
