@@ -50,8 +50,9 @@ async def update_qm_bot_channel_name_task(bot, stats_json, active_matches):
         try:
             await qm_bot_channel.edit(name=new_channel_name)
         except (discord.DiscordServerError, discord.errors.HTTPException) as e:
-            logger.error("failed to update channel name")
-            await send_message_to_log_channel(bot=bot, msg=str(e))
+            error_msg = f"failed to update channel name for '{server.name}': {type(e).__name__}: {str(e)}"
+            logger.error(error_msg)
+            await send_message_to_log_channel(bot=bot, msg=error_msg)
 
 async def periodic_update_qm_bot_channel_name(bot, cnc_api_client):
     while True:

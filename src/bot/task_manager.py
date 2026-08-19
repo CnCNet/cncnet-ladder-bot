@@ -71,9 +71,24 @@ class TaskManager:
                 update_channel_name._has_run = True
                 return
 
-            stats_json = self.state.cnc_api_client.fetch_stats("all")
-            active_matches = self.state.cnc_api_client.active_matches(ladder="all")
-            await update_qm_bot_channel_name_task(self.bot, stats_json, active_matches)
+            try:
+                stats_json = self.state.cnc_api_client.fetch_stats("all")
+                active_matches = self.state.cnc_api_client.active_matches(ladder="all")
+
+                # Check if API calls returned errors
+                from src.util.utils import is_error, get_exception_msg
+                if is_error(stats_json):
+                    logger.error(f"Failed to fetch stats for channel name update: {get_exception_msg(stats_json)}")
+                    return
+                if is_error(active_matches):
+                    logger.error(f"Failed to fetch active matches for channel name update: {get_exception_msg(active_matches)}")
+                    return
+
+                await update_qm_bot_channel_name_task(self.bot, stats_json, active_matches)
+            except Exception as e:
+                logger.error(f"Unhandled exception in update_channel_name task: {get_exception_msg(e)}")
+                from src.util.utils import send_message_to_log_channel
+                await send_message_to_log_channel(bot=self.bot, msg=f"update_channel_name task error: {str(e)}")
 
         @tasks.loop(hours=self.config.sync_roles_interval_hours)
         async def sync_roles() -> None:
