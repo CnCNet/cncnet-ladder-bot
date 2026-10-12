@@ -150,6 +150,21 @@ class CommandManager:
             await self._purge_bot_channel(0)
             await interaction.followup.send("✅ Bot channel purged successfully!", ephemeral=True)
 
+        @self.bot.tree.command(name="privacy", description="View the bot's privacy policy")
+        async def privacy_slash(interaction: Interaction) -> None:
+            """Display privacy policy link"""
+            privacy_message = (
+                "**CnCNet Ladder Bot Privacy Policy**\n\n"
+                "Our privacy policy explains:\n"
+                "• What data we access (server members, roles)\n"
+                "• How we use it (role synchronization only)\n"
+                "• That we don't store data externally\n"
+                "• Your rights and how to contact us\n\n"
+                "📄 **Read the full policy:**\n"
+                "https://github.com/CnCNet/cncnet-ladder-bot/blob/master/PRIVACY.md"
+            )
+            await interaction.response.send_message(privacy_message, ephemeral=True)
+
     async def _ladder_autocomplete(
         self,
         interaction: Interaction,
