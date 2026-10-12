@@ -90,16 +90,22 @@ class TaskManager:
                 from src.util.utils import send_message_to_log_channel
                 await send_message_to_log_channel(bot=self.bot, msg=f"update_channel_name task error: {str(e)}")
 
-        @tasks.loop(hours=self.config.sync_roles_interval_hours)
-        async def sync_roles() -> None:
-            """
-            Sync Discord roles with ladder rankings.
-            Runs every 8 hours (production only).
-            """
-            await sync_qm_ranking_roles_task.execute(
-                bot=self.bot,
-                cnc_api_client=self.state.cnc_api_client
-            )
+        # TODO: Re-enable after Discord approves Members Intent
+        # Role sync requires server.members access which needs privileged intent approval
+        # @tasks.loop(hours=self.config.sync_roles_interval_hours)
+        # async def sync_roles() -> None:
+        #     """
+        #     Sync Discord roles with ladder rankings.
+        #     Runs every 8 hours (production only).
+        #     DISABLED: Requires Members Intent approval from Discord.
+        #     """
+        #     await sync_qm_ranking_roles_task.execute(
+        #         bot=self.bot,
+        #         cnc_api_client=self.state.cnc_api_client
+        #     )
+
+        # Placeholder to avoid reference errors
+        sync_roles = None
 
         @tasks.loop(minutes=self.config.cleanup_duplicate_messages_interval_minutes)
         async def cleanup_duplicates() -> None:
@@ -131,7 +137,7 @@ class TaskManager:
         # Store task references
         self.update_bot_channel_task = update_bot_channel
         self.update_channel_name_task = update_channel_name
-        self.sync_roles_task = sync_roles
+        self.sync_roles_task = sync_roles  # Currently None - disabled until Members Intent approved
         self.cleanup_duplicates_task = cleanup_duplicates
         self.refresh_ladders_task = refresh_ladders
 
@@ -139,17 +145,18 @@ class TaskManager:
         """
         Start all background tasks.
 
-        Note: sync_roles_task is only started if DEBUG is False.
+        Note: sync_roles_task is DISABLED until Members Intent is approved by Discord.
         """
         self.update_bot_channel_task.start()
         self.update_channel_name_task.start()
         self.cleanup_duplicates_task.start()
         self.refresh_ladders_task.start()
 
-        if not self.config.debug:
-            self.sync_roles_task.start()
+        # TODO: Re-enable after Discord approves Members Intent
+        # if not self.config.debug and self.sync_roles_task:
+        #     self.sync_roles_task.start()
 
-        logger.log("All background tasks started")
+        logger.log("All background tasks started (role sync disabled - awaiting Discord approval)")
 
     def stop_all_tasks(self) -> None:
         """Stop all background tasks gracefully"""
@@ -165,7 +172,7 @@ class TaskManager:
         if self.refresh_ladders_task.is_running():
             self.refresh_ladders_task.cancel()
 
-        if self.sync_roles_task.is_running():
+        if self.sync_roles_task and self.sync_roles_task.is_running():
             self.sync_roles_task.cancel()
 
         logger.log("All background tasks stopped")
