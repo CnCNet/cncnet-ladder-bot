@@ -11,8 +11,8 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_CLIENT_SECRET')
 
 # Setup bot
-intents = discord.Intents.default()
-intents.message_content = True
+# Note: Only using guilds and members intents (members is privileged but needed for role sync)
+intents = discord.Intents(guilds=True, members=True)
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Sample match data

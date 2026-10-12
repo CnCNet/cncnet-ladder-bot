@@ -30,10 +30,10 @@ class CommandManager:
         self.state = state
 
     def register_all_commands(self) -> None:
-        """Register both prefix and slash commands"""
-        self._register_prefix_commands()
+        """Register slash commands (prefix commands disabled to avoid message_content intent requirement)"""
+        # self._register_prefix_commands()  # Disabled: Requires message_content privileged intent
         self._register_slash_commands()
-        logger.log("All commands registered")
+        logger.log("All slash commands registered")
 
     def _register_prefix_commands(self) -> None:
         """Register legacy prefix commands (!command)"""

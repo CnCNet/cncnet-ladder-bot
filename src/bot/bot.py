@@ -32,11 +32,9 @@ class CnCNetBot:
         self.config = BotConfig.from_env()
 
         # Initialize Discord bot with required intents
+        # Note: members=True is privileged and required for role sync functionality
         intents = Intents(
-            messages=True,
             guilds=True,
-            message_content=True,
-            guild_messages=True,
             members=True
         )
         self.bot = commands.Bot(
