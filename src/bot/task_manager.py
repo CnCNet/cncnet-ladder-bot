@@ -96,16 +96,12 @@ class TaskManager:
         async def sync_roles() -> None:
             """
             Sync Discord roles with ladder rankings.
-            Runs every 8 hours (production only).
-            DISABLED: Requires Members Intent approval from Discord.
+            Runs every 8 hours (production only, skipped if DEBUG=true).
             """
             await sync_qm_ranking_roles_task.execute(
                 bot=self.bot,
                 cnc_api_client=self.state.cnc_api_client
             )
-
-        # Placeholder to avoid reference errors
-        sync_roles = None
 
         @tasks.loop(minutes=self.config.cleanup_duplicate_messages_interval_minutes)
         async def cleanup_duplicates() -> None:
@@ -145,7 +141,7 @@ class TaskManager:
         """
         Start all background tasks.
 
-        Note: sync_roles_task is DISABLED until Members Intent is approved by Discord.
+        Note: sync_roles_task only runs in production (DEBUG=False).
         """
         self.update_bot_channel_task.start()
         self.update_channel_name_task.start()
@@ -154,8 +150,9 @@ class TaskManager:
 
         if not self.config.debug and self.sync_roles_task:
             self.sync_roles_task.start()
-
-        logger.log("All background tasks started (role sync disabled - awaiting Discord approval)")
+            logger.log("All background tasks started (including role sync)")
+        else:
+            logger.log("All background tasks started (role sync disabled in DEBUG mode)")
 
     def stop_all_tasks(self) -> None:
         """Stop all background tasks gracefully"""
