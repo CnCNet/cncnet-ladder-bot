@@ -31,12 +31,9 @@ class CnCNetBot:
         # Load configuration from environment
         self.config = BotConfig.from_env()
 
-        # Initialize Discord bot with required intents
-        # Note: members=True is DISABLED until Discord approval (role sync disabled)
-        # TODO: Re-enable after Discord approves Members Intent for role sync functionality
         intents = Intents(
-            guilds=True
-            # members=True  # Re-enable after Discord approval
+            guilds=True,
+            members=True
         )
         self.bot = commands.Bot(
             command_prefix=self.config.command_prefix,
